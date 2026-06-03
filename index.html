@@ -356,9 +356,8 @@ body{font-family:Arial,sans-serif;background:#f0f0f0;min-height:100vh}
             </svg>
           </div>
         </div>
+        <div id="extraBannersWrap" style="margin-bottom:20px;display:flex;flex-direction:column;gap:14px;"></div>
         <div style="font-size:12px;font-weight:900;color:#E2001A;text-transform:uppercase;letter-spacing:.5px;border-bottom:2px solid #E2001A;padding-bottom:5px;margin-bottom:14px;display:inline-block;">Offres en cours</div>
-        <div class="products-grid" id="homeGrid"><div class="loading">Chargement...</div></div>
-        <div id="extraBannersWrap" style="margin-top:20px;display:flex;flex-direction:column;gap:14px;"></div>
       </div>
       <!-- MEUBLE -->
       <div class="page" id="page-meuble">
@@ -502,7 +501,7 @@ function goPage(p){
   }
   if(p==='electro')renderElectroTabs();
   if(p==='magasins')renderStores();
-  if(p==='home')renderHome();
+  if(p==='home'){renderHome();renderExtraBanners();}
   currentPage=p;
 }
 
@@ -546,7 +545,6 @@ async function renderHome(){
     if(stock!==null){var ratio=p.qty>0?stock/p.qty:0,color=stockColor(ratio);stH='<div style="margin-top:6px;"><div style="font-size:9px;font-weight:700;color:'+(isEp?'#E2001A':'#555')+';margin-bottom:2px;">'+(isEp?'Épuisé':'Stock: '+stock+'/'+p.qty)+'</div><div style="height:4px;background:#f0f0f0;border-radius:2px;overflow:hidden;"><div style="height:100%;width:'+Math.round(ratio*100)+'%;background:'+color+';border-radius:2px;"></div></div></div>';}
     return '<div class="product-card" style="cursor:pointer;" onclick="goPage(\''+p.section+'\')">'+(isEp?'<div style="position:absolute;top:6px;right:6px;background:#E2001A;color:#fff;font-size:8px;font-weight:900;padding:2px 7px;border-radius:10px;z-index:2;">ÉPUISÉ</div>':'')+'<div class="product-img" style="background:'+(sBg[p.section]||'#f8f8f8')+';">'+imgH+'</div><div class="product-body"><div style="font-size:9px;font-weight:700;color:#E2001A;text-transform:uppercase;">'+(sLbl[p.section]||p.section)+'</div><div class="product-name">'+p.name+'</div><div class="product-prices"><span class="price-new">'+(p.new_price||'')+'</span><span class="price-old">'+(p.old_price||'')+'</span>'+(d?'<span class="product-discount">'+d+'</span>':'')+'</div>'+stH+'</div></div>';
   }).join('');
-  renderExtraBanners();
 }
 
 var ELECTRO_CATS=['Tous','Plaque de cuisson','Four','Lave-vaisselle','Hotte','Réfrigérateur'];
@@ -725,12 +723,10 @@ async function renderExtraBanners(){
     var ratio=b.qty&&stock!==null?stock/b.qty:1,color=stockColor(ratio),pct=Math.round(ratio*100);
     var stockBar=stock!==null?'<div style="margin-top:8px;"><div style="display:flex;justify-content:space-between;font-size:10px;font-weight:700;margin-bottom:3px;"><span style="color:'+(isEp?'#FFD600':'rgba(255,255,255,.9)')+'">'+(isEp?'⚠ ÉPUISÉ':'Stock : '+stock+' / '+b.qty+' disponibles')+'</span>'+((!isEp&&stock<=Math.ceil(b.qty*.25))?'<span style="color:#FFD600;">⚠ Stock faible</span>':'')+'</div><div style="height:5px;background:rgba(255,255,255,.2);border-radius:3px;overflow:hidden;"><div style="height:100%;width:'+pct+'%;background:'+color+';border-radius:3px;"></div></div></div>':'';
     var condH=b.condition_text?'<div style="font-size:10px;color:rgba(255,255,255,.75);margin-top:6px;font-style:italic;">'+b.condition_text+'</div>':'';
-    return '<div style="position:relative;border-radius:8px;overflow:hidden;cursor:'+(b.link?'pointer':'default')+';background:#1a1a1a;" '+(b.link?'onclick="window.open(\''+b.link+'\',\'_blank\')"':'')+' onmouseenter="showBBtns(this)" onmouseleave="hideBBtns(this)">'+
+    return '<div style="position:relative;border-radius:8px;overflow:hidden;cursor:'+(b.link?'pointer':'default')+';background:#1a1a1a;" '+(b.link?'onclick="window.open(\''+b.link+'\',\'_blank\')"':'')+'>'+
       (b.img?'<img src="'+b.img+'" style="width:100%;display:block;'+(isEp?'opacity:.5':'')+'" alt="">':'<div style="height:80px;background:#2a2a2a;"></div>')+
       (isEp?'<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.45);"><span style="background:#E2001A;color:#fff;font-size:16px;font-weight:900;padding:8px 20px;border-radius:6px;letter-spacing:2px;transform:rotate(-5deg);">ÉPUISÉ</span></div>':'')+
       ((stockBar||condH)?'<div style="background:rgba(0,0,0,.65);padding:10px 14px;">'+stockBar+condH+'</div>':'')+
-      '<button onclick="event.stopPropagation();editExtraBanner('+b.id+')" style="position:absolute;top:8px;right:48px;background:rgba(0,0,0,.5);color:#fff;border:none;border-radius:4px;padding:3px 8px;font-size:10px;font-weight:700;cursor:pointer;display:none;" class="bb-btn">✏️</button>'+
-      '<button onclick="event.stopPropagation();deleteExtraBanner('+b.id+')" style="position:absolute;top:8px;right:8px;background:rgba(0,0,0,.5);color:#fff;border:none;border-radius:4px;padding:3px 8px;font-size:10px;font-weight:700;cursor:pointer;display:none;" class="bb-btn">✕</button>'+
     '</div>';
   }).join('');
 }
@@ -888,6 +884,7 @@ async function init(){
   await loadBlocs();
   await renderSidebarBlocs();
   renderHome();
+  renderExtraBanners();
 }
 init();
 </script>
