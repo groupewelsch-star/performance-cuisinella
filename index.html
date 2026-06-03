@@ -730,15 +730,7 @@ document.getElementById('btnMagasins').onclick=function(){ goPage('magasins'); }
 /* ========== GLOBAL ADMIN ========== */
 
 
-document.getElementById('btnOpenBloc1FromGlobal').onclick=function(){document.getElementById('globalAdminOverlay').classList.remove('open');openBlocImageAdmin(1);};
-document.getElementById('btnOpenBloc2FromGlobal').onclick=function(){document.getElementById('globalAdminOverlay').classList.remove('open');openBlocImageAdmin(2);};
-document.getElementById('btnAddBlocFromGlobal').onclick=function(){document.getElementById('globalAdminOverlay').classList.remove('open');openAddBloc();};
-document.getElementById('btnOpenChangePwd').onclick=function(){
-  document.getElementById('globalAdminOverlay').classList.remove('open');
-  document.getElementById('newPwdInput').value='';document.getElementById('newPwdConfirm').value='';
-  document.getElementById('changePwdError').style.display='none';document.getElementById('changePwdSuccess').style.display='none';
-  document.getElementById('changePwdOverlay').classList.add('open');
-};
+
 
 /* ========== BANNER ========== */
 async function loadBanner(){
