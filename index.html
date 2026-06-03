@@ -507,8 +507,7 @@ function goPage(p){
 }
 
 /* ===== PRODUCTS ===== */
-async function getProds(section){return await sbReq('products?section=eq.'+section+'&order=id.asc');}
-async function getAllProds(){return await sbReq('products?order=id.asc');}
+
 
 function prodCardHtml(p,showCat){
   var stock=computeStock(p.qty,p.end_date,p.created_at),isEp=(stock!==null&&stock===0),d=discount(p.old_price,p.new_price);
