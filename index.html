@@ -767,7 +767,7 @@ document.getElementById('bannerUrlInput').addEventListener('input',function(){
   if(v){document.getElementById('bannerPreviewImg').src=v;document.getElementById('bannerPreviewImg').style.display='block';}
   else{document.getElementById('bannerPreviewImg').style.display='none';}
 });
-document.getElementById('bannerCancelBtn').onclick=function(){document.getElementById('bannerOverlay').classList.remove('open');};
+
 document.getElementById('bannerSaveBtn').onclick=async function(){
   var urlVal=document.getElementById('bannerUrlInput').value.trim();
   var preview=document.getElementById('bannerPreviewImg').src;
@@ -887,7 +887,7 @@ document.getElementById('extraBannerImgUrl').addEventListener('input',function()
   if(v){document.getElementById('extraBannerImgPreview').src=v;document.getElementById('extraBannerImgPreview').style.display='block';}
   else{document.getElementById('extraBannerImgPreview').style.display='none';}
 });
-document.getElementById('extraBannerCancelBtn').onclick=function(){document.getElementById('extraBannerOverlay').classList.remove('open');};
+
 document.getElementById('extraBannerSaveBtn').onclick=async function(){
   var imgUrl=document.getElementById('extraBannerImgUrl').value.trim();
   var preview=document.getElementById('extraBannerImgPreview').src;
@@ -1045,7 +1045,7 @@ document.getElementById('styliaSaveBtn').onclick = async function(){
 };
 
 /* ========== CHANGE PWD ========== */
-document.getElementById('changePwdCancelBtn').onclick=function(){document.getElementById('changePwdOverlay').classList.remove('open');};
+
 document.getElementById('changePwdSaveBtn').onclick=async function(){
   var np=document.getElementById('newPwdInput').value.trim();
   var nc=document.getElementById('newPwdConfirm').value.trim();
@@ -1113,7 +1113,7 @@ function resetForm(){
   document.getElementById('fImgFile').value='';
   document.getElementById('imgPreview').style.display='none';document.getElementById('imgPreview').src='';
 }
-document.getElementById('prodCancelBtn').onclick=function(){document.getElementById('adminProdOverlay').classList.remove('open');resetForm();};
+
 document.getElementById('prodSaveBtn').onclick=async function(){
   var name=document.getElementById('fName').value.trim();
   var oldP=document.getElementById('fOld').value.trim();
