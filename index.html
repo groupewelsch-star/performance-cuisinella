@@ -579,9 +579,13 @@ function editProdById(id){
   var lbl=document.querySelector('#prodOv .sep .slabel');
   if(lbl)lbl.textContent='✏️ Modifier — '+p.name;
   document.getElementById('prodEditId').value=p.id;
-  document.getElementById('prodSection').value=p.section||adminSec;
+  var sec=p.section||adminSec;
+  var selEl=document.getElementById('prodSection');
+  selEl.removeEventListener('change',onSecChange);
+  selEl.value=sec;
+  selEl.addEventListener('change',onSecChange);
   document.getElementById('prodName').value=p.name||'';
-  document.getElementById('prodCatWrap').style.display=(p.section||adminSec)==='electro'?'flex':'none';
+  document.getElementById('prodCatWrap').style.display=sec==='electro'?'flex':'none';
   if(p.cat)document.getElementById('prodCat').value=p.cat;
   document.getElementById('prodOld').value=p.old_price||'';
   document.getElementById('prodNew').value=p.new_price||'';
@@ -625,9 +629,9 @@ async function saveProd(){
   var prev=document.getElementById('prodImgPrev').src;
   var img=imgUrl||(prev&&prev!==window.location.href?prev:'');
   var id=document.getElementById('prodEditId').value;
-  var prod={name:name,section:sec,old_price:oldP,new_price:newP,qty:qty,start_date:sd,end_date:ed,img:img,created_at:Date.now()};
+  var prod={name:name,section:sec,old_price:oldP,new_price:newP,qty:qty,start_date:sd,end_date:ed,img:img,created_at:new Date().toISOString()};
   if(sec==='electro')prod.cat=document.getElementById('prodCat').value;
-  if(id){var ex=adminProds.find(function(p){return p.id==id;});if(ex)prod.created_at=ex.created_at;await sb('products?id=eq.'+id,{method:'PATCH',body:JSON.stringify(prod)});}
+  if(id){var ex=adminProds.find(function(p){return p.id==id;});if(ex)prod.created_at=ex.created_at;await sb('products?id=eq.'+id,{method:'PATCH',headers:{'Prefer':'return=minimal'},body:JSON.stringify(prod)});}
   else{await sb('products',{method:'POST',headers:{'Prefer':'return=minimal'},body:JSON.stringify(prod)});}
   adminSec=sec;await loadAdminProds();renderGrid(sec);if(curPage==='home')renderHome();resetProd();
 }
