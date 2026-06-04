@@ -620,6 +620,7 @@ async function saveProd(){
   var name=document.getElementById('prodName').value.trim();
   var oldP=document.getElementById('prodOld').value.trim();
   var newP=document.getElementById('prodNew').value.trim();
+  console.log('[saveProd] name='+name+' oldP='+oldP+' newP='+newP);
   if(!name||!newP){alert('Le nom et le prix remisé sont requis.');return;}
   var sec=document.getElementById('prodSection').value;
   var qty=parseInt(document.getElementById('prodQty').value)||null;
@@ -631,8 +632,18 @@ async function saveProd(){
   var id=document.getElementById('prodEditId').value;
   var prod={name:name,section:sec,old_price:oldP,new_price:newP,qty:qty,start_date:sd,end_date:ed,img:img,created_at:new Date().toISOString()};
   if(sec==='electro')prod.cat=document.getElementById('prodCat').value;
-  if(id){var ex=adminProds.find(function(p){return p.id==id;});if(ex)prod.created_at=ex.created_at;await sb('products?id=eq.'+id,{method:'PATCH',headers:{'Prefer':'return=minimal'},body:JSON.stringify(prod)});}
-  else{await sb('products',{method:'POST',headers:{'Prefer':'return=minimal'},body:JSON.stringify(prod)});}
+  console.log('[saveProd] id='+id+' prod='+JSON.stringify(prod));
+  var ok;
+  if(id){
+    var ex=adminProds.find(function(p){return p.id==id;});if(ex)prod.created_at=ex.created_at;
+    var r=await fetch(SB+'/rest/v1/products?id=eq.'+id,{method:'PATCH',headers:{'apikey':SK,'Authorization':'Bearer '+SK,'Content-Type':'application/json','Prefer':'return=minimal'},body:JSON.stringify(prod)});
+    console.log('[saveProd] PATCH status='+r.status);ok=r.ok;
+  } else {
+    var r=await fetch(SB+'/rest/v1/products',{method:'POST',headers:{'apikey':SK,'Authorization':'Bearer '+SK,'Content-Type':'application/json','Prefer':'return=minimal'},body:JSON.stringify(prod)});
+    var txt=await r.text();
+    console.log('[saveProd] POST status='+r.status+' body='+txt);ok=r.ok;
+  }
+  if(!ok){alert('Erreur Supabase — ouvre la console (F12) pour voir le détail.');return;}
   adminSec=sec;await loadAdminProds();renderGrid(sec);if(curPage==='home')renderHome();resetProd();
 }
 document.getElementById('prodImgFile').addEventListener('change',function(e){var f=e.target.files[0];if(!f)return;var r=new FileReader();r.onload=function(ev){document.getElementById('prodImgPrev').src=ev.target.result;document.getElementById('prodImgPrev').style.display='block';};r.readAsDataURL(f);});
