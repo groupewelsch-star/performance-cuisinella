@@ -556,9 +556,9 @@ async function loadAdminProds(){
   adminProds=await getProds(adminSec);
   var l=document.getElementById('prodList');
   if(!adminProds.length){l.innerHTML='<div style="color:#bbb;font-size:12px;text-align:center;padding:10px;">Aucun produit.</div>';return;}
-  l.innerHTML=adminProds.map(function(p,i){
+  l.innerHTML=adminProds.map(function(p){
     var s=calcStock(p.qty,p.end_date,p.created_at);
-    return '<div class="aitem"><div><div class="aiinfo">'+p.name+'</div><div class="aisub">'+(p.cat?p.cat+' — ':'')+p.new_price+(s!==null?' | '+(s===0?'<b style="color:#E2001A">ÉPUISÉ</b>':'Stock: <b>'+s+'</b>/'+p.qty):'')+'</div></div><div class="aiact"><button class="bedit" onclick="editProd('+i+')">Modifier</button><button class="bdel" onclick="delProd('+i+')">Supprimer</button></div></div>';
+    return '<div class="aitem" id="aitem-'+p.id+'"><div><div class="aiinfo">'+p.name+'</div><div class="aisub">'+(p.cat?p.cat+' — ':'')+p.new_price+(s!==null?' | '+(s===0?'<b style="color:#E2001A">ÉPUISÉ</b>':'Stock: <b>'+s+'</b>/'+p.qty):'')+'</div></div><div class="aiact"><button class="bedit" id="bedit-'+p.id+'" onclick="editProdById('+p.id+')">Modifier</button><button class="bdel" onclick="delProdById('+p.id+')">Supprimer</button></div></div>';
   }).join('');
 }
 function openProductsAdmin(){
@@ -568,8 +568,16 @@ function openProductsAdmin(){
   document.getElementById('prodCatWrap').style.display=adminSec==='electro'?'flex':'none';
   resetProd();loadAdminProds();
 }
-function editProd(i){
-  var p=adminProds[i];
+function editProdById(id){
+  var p=adminProds.find(function(x){return x.id==id;});
+  if(!p)return;
+  // Mettre en surbrillance la ligne sélectionnée
+  document.querySelectorAll('.aitem').forEach(function(el){el.style.background='';el.style.borderColor='';});
+  var row=document.getElementById('aitem-'+id);
+  if(row){row.style.background='#fff0f0';row.style.borderColor='#E2001A';}
+  // Mettre à jour le titre de la section formulaire
+  var lbl=document.querySelector('#prodOv .sep .slabel');
+  if(lbl)lbl.textContent='✏️ Modifier — '+p.name;
   document.getElementById('prodEditId').value=p.id;
   document.getElementById('prodSection').value=p.section||adminSec;
   document.getElementById('prodName').value=p.name||'';
@@ -582,18 +590,27 @@ function editProd(i){
   document.getElementById('prodEnd').value=p.end_date||'';
   document.getElementById('prodImgUrl').value=p.img||'';
   if(p.img){document.getElementById('prodImgPrev').src=p.img;document.getElementById('prodImgPrev').style.display='block';}
+  else{document.getElementById('prodImgPrev').style.display='none';document.getElementById('prodImgPrev').src='';}
+  // Scroll vers le formulaire
+  var sep=document.querySelector('#prodOv .sep');
+  if(sep)setTimeout(function(){sep.scrollIntoView({behavior:'smooth',block:'start'});},50);
 }
-async function delProd(i){
+// Garder l'ancienne pour compatibilité
+function editProd(i){if(adminProds[i])editProdById(adminProds[i].id);}
+async function delProdById(id){
   if(confirm('Supprimer ce produit ?')){
-    await sb('products?id=eq.'+adminProds[i].id,{method:'DELETE'});
+    await sb('products?id=eq.'+id,{method:'DELETE',headers:{'Prefer':'return=minimal'}});
     await loadAdminProds();renderGrid(adminSec);if(curPage==='home')renderHome();
   }
 }
+async function delProd(i){if(adminProds[i])await delProdById(adminProds[i].id);}
 function resetProd(){
   document.getElementById('prodEditId').value='';
   ['prodName','prodOld','prodNew','prodImgUrl'].forEach(function(id){document.getElementById(id).value='';});
   document.getElementById('prodQty').value='';document.getElementById('prodStart').value='';document.getElementById('prodEnd').value='';
   document.getElementById('prodImgFile').value='';document.getElementById('prodImgPrev').style.display='none';document.getElementById('prodImgPrev').src='';
+  var lbl=document.querySelector('#prodOv .sep .slabel');if(lbl)lbl.textContent='Ajouter / Modifier';
+  document.querySelectorAll('.aitem').forEach(function(el){el.style.background='';el.style.borderColor='';});
 }
 async function saveProd(){
   var name=document.getElementById('prodName').value.trim();
