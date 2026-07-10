@@ -599,14 +599,17 @@ async function saveProd(){
   var name=document.getElementById('prodName').value.trim();
   var oldP=document.getElementById('prodOld').value.trim();
   var newP=document.getElementById('prodNew').value.trim();
-  if(!name||!oldP||!newP){alert('Nom et prix requis.');return;}
+  if(!name){alert('Nom requis.');return;}
   var sec=document.getElementById('prodSection').value;
   var qty=parseInt(document.getElementById('prodQty').value)||null;
   var sd=document.getElementById('prodStart').value||null;
   var ed=document.getElementById('prodEnd').value||null;
   var imgUrl=document.getElementById('prodImgUrl').value.trim();
   var prev=document.getElementById('prodImgPrev').src;
-  var img=imgUrl||(prev&&prev!==window.location.href?prev:'');
+  var img=imgUrl||'';
+  // N'accepte que les URLs externes, pas le base64
+  if(!img&&prev&&prev.indexOf('data:')===-1&&prev!==window.location.href) img=prev;
+  if(img&&img.indexOf('data:')===0){alert('Image trop volumineuse pour la base de données.\nUtilisez une URL externe (ex: postimages.org)');return;}
   var id=document.getElementById('prodEditId').value;
   var prod={name:name,section:sec,old_price:oldP,new_price:newP,qty:qty,start_date:sd,end_date:ed,img:img};
   if(sec==='electro')prod.cat=document.getElementById('prodCat').value;
@@ -735,7 +738,9 @@ async function deleteExtraBanner(id){
 }
 async function saveExtraBanner(){
   var u=document.getElementById('ebUrl').value.trim(),prev=document.getElementById('ebPrev').src;
-  var img=u||(prev&&prev!==window.location.href?prev:'');
+  var img=u||'';
+  if(!img&&prev&&prev.indexOf('data:')===-1&&prev!==window.location.href) img=prev;
+  if(img&&img.indexOf('data:')===0){alert('Image trop volumineuse.\nUtilisez une URL externe (ex: postimages.org)');return;}
   var condition=document.getElementById('ebCondition').value.trim();
   var lnk=document.getElementById('ebLink').value.trim();
   var qty=parseInt(document.getElementById('ebQty').value)||null;
