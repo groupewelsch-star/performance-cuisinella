@@ -292,6 +292,7 @@ body{font-family:Arial,sans-serif;background:#f0f0f0;min-height:100vh}
       </div>
       <div class="field"><label>Date d'épuisement</label><input type="date" id="prodEnd"><div class="hint">Stock décroît jusqu'à cette date.</div></div>
       <div class="field"><label>Image URL</label><input type="text" id="prodImgUrl" placeholder="https://..."></div>
+      <div class="field"><label>🔗 Lien "Détail" (optionnel)</label><input type="text" id="prodDetailUrl" placeholder="https://... (fiche produit, site fabricant...)"><div class="hint">Si rempli, un bouton "Détail →" apparaîtra sur la vignette.</div></div>
       <input type="file" id="prodImgFile" accept="image/*" style="font-size:11px;width:100%;margin-bottom:6px;">
       <img id="prodImgPrev" class="iprev" src="" alt="">
     </div>
@@ -511,7 +512,7 @@ function pcHtml(p,showCat){
   var img=p.img?'<img src="'+p.img+'" alt="'+p.name+'">':nophoto();
   var sh='';
   if(s!==null){var r=p.qty>0?s/p.qty:0,pct=Math.round(r*100),c=scol(r);sh='<div class="swrap"><div class="slbl"><span style="color:'+(ep?'#E2001A':'#555')+';font-weight:700;">'+(ep?'Épuisé':'Stock : <b>'+s+'</b> / '+p.qty+' pièces')+'</span>'+((!ep&&s<=Math.ceil(p.qty*.25))?'<span style="color:#E2001A;font-weight:700;">⚠ Faible</span>':'')+'</div><div class="sbar"><div class="sfill" style="width:'+pct+'%;background:'+c+';"></div></div></div>';}
-  return '<div class="pc'+(ep?' ep':'')+'"><div class="pimg">'+(showCat&&p.cat?'<div class="cbadge">'+p.cat+'</div>':'')+img+(ep?'<div class="eflag"><span>ÉPUISÉ</span></div>':'')+'</div><div class="pbody"><div class="pname">'+p.name+'</div><div class="pprices"><span class="pnew">'+(p.new_price||'')+'</span><span class="pold">'+(p.old_price||'')+'</span></div>'+(d?'<div class="pdis">'+d+'</div>':'')+sh+'</div></div>';
+  return '<div class="pc'+(ep?' ep':'')+'"><div class="pimg">'+(showCat&&p.cat?'<div class="cbadge">'+p.cat+'</div>':'')+img+(ep?'<div class="eflag"><span>ÉPUISÉ</span></div>':'')+'</div><div class="pbody"><div class="pname">'+p.name+'</div><div class="pprices"><span class="pnew">'+(p.new_price||'')+'</span><span class="pold">'+(p.old_price||'')+'</span></div>'+(d?'<div class="pdis">'+d+'</div>':'')+sh+(p.detail_url?'<div style="margin-top:8px;"><a href="'+p.detail_url+'" target="_blank" style="display:inline-block;background:#E2001A;color:#fff;border-radius:4px;padding:5px 12px;font-size:11px;font-weight:700;text-decoration:none;">Détail →</a></div>':'')+'</div></div>';
 }
 
 async function renderGrid(sec){
@@ -584,7 +585,7 @@ function editProd(i){
   document.getElementById('prodQty').value=p.qty||'';
   document.getElementById('prodStart').value=p.start_date||'';
   document.getElementById('prodEnd').value=p.end_date||'';
-  document.getElementById('prodImgUrl').value=p.img||'';
+  document.getElementById('prodDetailUrl').value=p.detail_url||'';
   if(p.img){document.getElementById('prodImgPrev').src=p.img;document.getElementById('prodImgPrev').style.display='block';}
 }
 async function delProd(i){
@@ -615,7 +616,8 @@ async function saveProd(){
   if(!img&&prev&&prev.indexOf('data:')===-1&&prev!==window.location.href) img=prev;
   if(img&&img.indexOf('data:')===0){alert('Image trop volumineuse pour la base de données.\nUtilisez une URL externe (ex: postimages.org)');return;}
   var id=document.getElementById('prodEditId').value;
-  var prod={name:name,section:sec,old_price:oldP,new_price:newP,qty:qty,start_date:sd,end_date:ed,img:img};
+  var detailUrl=document.getElementById('prodDetailUrl').value.trim();
+  var prod={name:name,section:sec,old_price:oldP,new_price:newP,qty:qty,start_date:sd,end_date:ed,img:img,detail_url:detailUrl};
   if(sec==='electro')prod.cat=document.getElementById('prodCat').value;
   if(id){
     var ex=adminProds.find(function(p){return p.id==id;});
