@@ -331,7 +331,7 @@ body{font-family:Arial,sans-serif;background:#f0f0f0;min-height:100vh}
       <button class="nav-btn" onclick="window.open('https://www.maboutique.cuisinella/fr_fr/tables-et-chaises-cuisinella-console-extensible-en-table-florence-22010012.html','_blank')"><span class="ndot dk">B</span> Boutique</button>
     </div>
   </div>
-  <div class="counter-bar"><div class="counter-text">⬤ &nbsp;<span id="cnum">12</span> vendeurs connectés en ce moment</div></div>
+  <div class="counter-bar"><div class="counter-text">⬤ &nbsp;<span id="cnum">12</span> vendeurs connectés en ce moment<span id="offWrap" style="display:none;"> &nbsp;•&nbsp; Déjà <span id="onum">0</span> <span id="olbl">offres saisies aujourd'hui</span></span></div></div>
   <div class="body">
     <div class="sidebar">
       <div class="sh">Offres du moment</div>
@@ -404,6 +404,7 @@ var SK='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB
 async function sb(path,o){
   var opts=o||{};
   opts.headers=Object.assign({'apikey':SK,'Authorization':'Bearer '+SK,'Content-Type':'application/json'},opts.headers||{});
+  if(opts.method&&opts.method!=='GET'&&/^(products|banners)/.test(path))STKP=null;
   var r=await fetch(SB+'/rest/v1/'+path,opts);
   if(opts.method&&opts.method!=='GET') return r.ok;
   var d=await r.json(); return Array.isArray(d)?d:[];
@@ -465,32 +466,123 @@ function maxV(){var h=new Date().getHours(),m=new Date().getMinutes(),t=h*60+m;i
 function updCnt(){var mx=maxV(),mn=Math.max(1,Math.floor(mx*.3));document.getElementById('cnum').textContent=Math.floor(Math.random()*(mx-mn+1))+mn;}
 setInterval(updCnt,120000);
 
+/* ===== OFFRES SAISIES AUJOURD'HUI =====
+   - rien avant 10h00
+   - progression aléatoire (propre à chaque jour) entre 10h00 et 19h00, puis le chiffre reste fixe
+   - total de la journée : entre 60 % et 100 % de 3 % du stock de départ des offres en ligne
+   - le chiffre ne baisse jamais dans la journée et reste identique si on recharge la page */
+var OFF_DEBUT=10*60,OFF_FIN=19*60,OFF_TAUX=.03;
+function offresNow(){
+  if(!STKTOT)return 0;
+  var d=new Date(),t=d.getHours()*60+d.getMinutes();
+  if(t<OFF_DEBUT)return 0;
+  var seed=d.getFullYear()*1000+(d.getMonth()+1)*40+d.getDate();
+  var total=Math.max(1,Math.round(STKTOT*OFF_TAUX*(.6+.4*srand(seed*3.7))));
+  var n=(OFF_FIN-OFF_DEBUT)/30,cw=[0];
+  for(var i=0;i<n;i++)cw.push(cw[i]+Math.pow(srand(seed*11+i*5.17),1.5)+.1); // créneaux de 30 min plus ou moins actifs
+  var el=Math.min(n,(t-OFF_DEBUT)/30),k=Math.floor(el);
+  var cum=k>=n?cw[n]:cw[k]+(cw[k+1]-cw[k])*(el-k);
+  return Math.floor(total*cum/cw[n]);
+}
+async function updOff(){
+  await ensureStock();
+  var n=offresNow(),w=document.getElementById('offWrap');if(!w)return;
+  if(n<1){w.style.display='none';return;}
+  document.getElementById('onum').textContent=n;
+  document.getElementById('olbl').textContent=n>1?"offres saisies aujourd'hui":"offre saisie aujourd'hui";
+  w.style.display='';
+}
+setInterval(updOff,120000);
+
 /* ===== STOCK ===== */
 function srand(s){var x=Math.sin(s+1)*1e4;return x-Math.floor(x);}
 function hstr(s){s=String(s==null?'':s);var h=2166136261;for(var i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619);}return (h>>>0)%100000;}
 // key = identifiant unique du produit/bannière : chaque produit a sa propre courbe de décroissance aléatoire
-function calcStock(qty,end,created,startDate,key){
+function mkCurve(qty,end,created,startDate,key){
   if(!qty||!end)return null;
-  var now=Date.now();
   // Utilise la date de début si définie, sinon created_at
   var start=startDate?new Date(startDate).getTime():new Date(created).getTime();
   var e=new Date(end).getTime();
-  if(now>=e)return 0;
-  if(!start||now<=start)return qty;
+  var c={q:+qty,s:start,e:e,k:key};
+  if(!start||!(e>start))return c;
   var seed=hstr(key)+(start%9973);
   var days=Math.max(1,Math.ceil((e-start)/864e5));
-  var el=(now-start)/864e5,d=Math.floor(el),frac=el-d;
   // Ventes quotidiennes aléatoires propres au produit (certains jours forts, d'autres calmes)
-  var tot=0,cum=0;
-  for(var i=0;i<days;i++){
-    var w=Math.pow(srand(seed*13+i*7.31),2)+.05;
-    tot+=w;
-    if(i<d)cum+=w;else if(i===d)cum+=w*frac;
-  }
+  var cw=[0];
+  for(var i=0;i<days;i++)cw.push(cw[i]+Math.pow(srand(seed*13+i*7.31),2)+.05);
+  c.cw=cw;c.days=days;
   // Profil global propre au produit : départ rapide ou plus régulier
-  var a=.5+srand(seed)*.7;
-  var r=Math.pow(Math.min(1,cum/tot),a);
-  return Math.max(0,Math.min(qty,Math.round(qty*(1-r))));
+  c.a=.5+srand(seed)*.7;
+  return c;
+}
+function stockAt(c,now){
+  if(!c)return null;
+  if(now>=c.e)return 0;
+  if(!c.s||now<=c.s||!c.cw)return c.q;
+  var el=(now-c.s)/864e5,d=Math.floor(el),frac=el-d;
+  var cum=d>=c.days?c.cw[c.days]:c.cw[d]+(c.cw[d+1]-c.cw[d])*frac;
+  var r=Math.pow(Math.min(1,cum/c.cw[c.days]),c.a);
+  return Math.max(0,Math.min(c.q,Math.round(c.q*(1-r))));
+}
+function rawStock(qty,end,created,startDate,key){return stockAt(mkCurve(qty,end,created,startDate,key),Date.now());}
+
+/* Règles d'affichage du stock :
+   1) deux produits/bannières ne peuvent jamais afficher le même stock restant
+   2) le stock affiché ne remonte jamais (il baisse ou reste identique)
+   On rejoue l'historique heure par heure depuis la mise en ligne : à chaque heure, le stock
+   ne peut que baisser, et en cas d'égalité avec un autre produit il est décalé vers le bas. */
+var STKMAP={},STKP=null,STKT=0,STKTOT=0;
+function buildStockMap(prods,banners,nowMs){
+  var H=36e5,items=[];
+  prods.forEach(function(p){var k=(p.id!=null?"p"+p.id:p.name),c=mkCurve(p.qty,p.end_date,p.created_at,p.start_date,k);if(c)items.push(c);});
+  banners.forEach(function(b){var k=(b.id!=null?"b"+b.id:b.title),c=mkCurve(b.qty,b.end_date,b.created_at,b.start_date,k);if(c)items.push(c);});
+  // Ordre fixe (par identifiant) pour que le résultat soit identique à chaque affichage
+  items.sort(function(x,y){var a=String(x.k),b=String(y.k),na=parseInt(a.slice(1),10),nb=parseInt(b.slice(1),10);
+    if(a[0]!==b[0])return a<b?-1:1;if(!isNaN(na)&&!isNaN(nb)&&na!==nb)return na-nb;return a<b?-1:a>b?1:0;});
+  var nowH=Math.floor(nowMs/H)*H,t0=nowH;
+  items.forEach(function(c){if(c.s&&c.s<t0)t0=c.s;});
+  t0=Math.max(Math.floor(t0/H)*H,nowH-400*24*H); // au plus 400 jours d'historique
+  var prev={};items.forEach(function(c){prev[c.k]=c.q;});
+  for(var t=t0;t<=nowH;t+=H){
+    // Cible de chaque produit en ligne : sa courbe, sans dépasser ce qui était déjà affiché
+    var live=[];
+    for(var i=0;i<items.length;i++){
+      var c=items[i];
+      if(c.s&&t<c.s)continue; // pas encore en ligne
+      var r=stockAt(c,t),v=Math.min(r,prev[c.k]);
+      if(v<=0){prev[c.k]=0;continue;} // épuisé
+      live.push({c:c,v:v,r:r,o:i});
+    }
+    // Du plus grand stock au plus petit. En cas d'égalité, c'est le produit dont la courbe
+    // est la plus basse (celui qui « vend » le plus vite) qui passe juste en dessous.
+    live.sort(function(x,y){return y.v-x.v||y.r-x.r||x.o-y.o;});
+    var last=Infinity;
+    for(var j=0;j<live.length;j++){
+      var x=Math.min(live[j].v,last-1);
+      if(x<1)x=0; // plus de place en dessous : le produit passe épuisé un peu plus tôt
+      prev[live[j].c.k]=x;if(x>0)last=x;
+    }
+  }
+  return prev;
+}
+function ensureStock(){
+  if(STKP&&Date.now()-STKT<60000)return STKP;
+  STKT=Date.now();
+  STKP=Promise.all([sb('products?order=id.asc'),sb('banners?order=id.asc')]).then(function(res){
+    var nw=Date.now(),tot=0;
+    res[0].concat(res[1]).forEach(function(x){
+      if(!x.qty)return;var st=x.start_date?new Date(x.start_date).getTime():new Date(x.created_at).getTime(),en=x.end_date?new Date(x.end_date).getTime():Infinity;
+      if((!st||st<=nw)&&nw<en)tot+=(+x.qty||0);
+    });
+    STKTOT=tot;
+    STKMAP=buildStockMap(res[0],res[1],nw);return STKMAP;
+  }).catch(function(){STKP=null;return STKMAP;});
+  return STKP;
+}
+function calcStock(qty,end,created,startDate,key){
+  var s=rawStock(qty,end,created,startDate,key);
+  if(s!==null&&s>0&&STKMAP.hasOwnProperty(key))return STKMAP[key];
+  return s;
 }
 function scol(r){return r>.5?'#22c55e':r>.25?'#f59e0b':'#E2001A';}
 function vis(sd){return !sd||new Date()>=new Date(sd);}
@@ -532,7 +624,7 @@ function pcHtml(p,showCat){
 async function renderGrid(sec){
   var g=document.getElementById('grid-'+sec);
   g.innerHTML='<div class="loading">Chargement...</div>';
-  var list=await getProds(sec);
+  var list=await getProds(sec);await ensureStock();
   list=list.filter(function(p){return vis(p.start_date);});
   if(sec==='electro'&&actCat!=='Tous')list=list.filter(function(p){return p.cat===actCat;});
   g.innerHTML=list.length?list.map(function(p){return pcHtml(p,sec==='electro');}).join(''):'<div class="empty">Aucun produit.</div>';
@@ -548,7 +640,7 @@ function setTab(c){actCat=c;renderETabs();}
 async function renderHome(){
   var g=document.getElementById('homeGrid');
   g.innerHTML='<div class="loading">Chargement...</div>';
-  var all=await getAllProds();
+  var all=await getAllProds();await ensureStock();
   all=all.filter(function(p){return vis(p.start_date);});
   for(var i=all.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1));var t=all[i];all[i]=all[j];all[j]=t;}
   var picks=all.slice(0,3);
@@ -572,7 +664,7 @@ function onSecChange(){
   loadAdminProds();
 }
 async function loadAdminProds(){
-  adminProds=await getProds(adminSec);
+  adminProds=await getProds(adminSec);await ensureStock();
   var l=document.getElementById('prodList');
   if(!adminProds.length){l.innerHTML='<div style="color:#bbb;font-size:12px;text-align:center;padding:10px;">Aucun produit.</div>';return;}
   l.innerHTML=adminProds.map(function(p,i){
@@ -699,7 +791,7 @@ async function saveBloc(n){
 /* ===== EXTRA BANNERS ===== */
 async function getExtraBanners(){return await sb('banners?order=position.asc');}
 async function renderExtraBanners(){
-  var banners=await getExtraBanners();
+  var banners=await getExtraBanners();await ensureStock();
   var container=document.getElementById('extraBnrWrap');
   banners=banners.filter(function(b){return vis(b.start_date);});
   if(!banners.length){container.innerHTML='';return;}
@@ -885,6 +977,7 @@ async function init(){
   await renderSidebarBlocs();
   renderHome();
   renderExtraBanners();
+  updOff();
 }
 init();
 </script>
