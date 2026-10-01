@@ -633,15 +633,15 @@ function offresNow(){
   for(var k in STKMAP){if(STKDAY0.hasOwnProperty(k)){var x=STKDAY0[k]-STKMAP[k];if(x>0)n+=x;}}
   return n;
 }
-async function updOff(){
-  await ensureStock();
+function paintOff(){
   var n=offresNow(),w=document.getElementById('offWrap');if(!w)return;
   if(n<1){w.style.display='none';return;}
   document.getElementById('onum').textContent=n;
   document.getElementById('olbl').textContent=n>1?"offres saisies aujourd'hui":"offre saisie aujourd'hui";
   w.style.display='';
 }
-setInterval(updOff,120000);
+async function updOff(){await ensureStock();paintOff();}
+setInterval(updOff,60000);
 
 /* ===== STOCK ===== */
 function srand(s){var x=Math.sin(s+1)*1e4;return x-Math.floor(x);}
@@ -710,7 +710,7 @@ function rawStock(qty,end,created,startDate,key){return stockAt(mkCurve(qty,end,
    2) le stock affiché ne remonte jamais (il baisse ou reste identique)
    On rejoue l'historique heure par heure depuis la mise en ligne : à chaque heure, le stock
    ne peut que baisser, et en cas d'égalité avec un autre produit il est décalé vers le bas. */
-var STKMAP={},STKP=null,STKT=0,STKTOT=0,STKDAY0={};
+var STKMAP={},STKP=null,STKT=0,STKTOT=0,STKDAY0={},STKREADY=false;
 function buildStockMap(prods,banners,nowMs){
   var H=36e5,items=[];
   prods.forEach(function(p){var k=(p.id!=null?"p"+p.id:p.name),c=mkCurve(p.qty,p.end_date,p.created_at,p.start_date,k);if(c)items.push(c);});
@@ -755,8 +755,17 @@ function ensureStock(){
       if((!st||st<=nw)&&nw<en)tot+=(+x.qty||0);
     });
     STKTOT=tot;
+    var old=JSON.stringify(STKMAP),first=!STKREADY;STKREADY=true;
     STKMAP=buildStockMap(res[0],res[1],nw);
     var d0=new Date(nw);d0.setHours(0,0,0,0);STKDAY0=buildStockMap(res[0],res[1],d0.getTime()); // stocks à minuit
+    // Compteur et vignettes toujours mis à jour ensemble quand les stocks changent
+    setTimeout(function(){
+      paintOff();
+      if(!first&&old!==JSON.stringify(STKMAP)){
+        if(['meuble','electro','sanitaire'].indexOf(curPage)!==-1)renderGrid(curPage);
+        if(curPage==='home'){renderHome();renderExtraBanners();}
+      }
+    },0);
     return STKMAP;
   }).catch(function(){STKP=null;return STKMAP;});
   return STKP;
