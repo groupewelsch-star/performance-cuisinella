@@ -125,6 +125,7 @@ body{font-family:Arial,sans-serif;background:#f0f0f0;min-height:100vh}
       <button class="br" onclick="openAddSidebarBloc()">➕ Ajouter un bloc sidebar</button>
       <button class="br" onclick="openManageSidebarBlocs()">📋 Gérer les blocs sidebar</button>
       <button class="br" onclick="openProductsAdmin()">🛍️ Gérer les produits</button>
+      <button class="br" onclick="openWelcomeAdmin()">📢 Message d'accueil</button>
       <button class="br" onclick="OV.sw('globalOv','changePwdOv')">🔑 Changer le mot de passe d'accès</button>
     </div>
     <div class="ma" style="margin-top:16px;">
@@ -303,6 +304,33 @@ body{font-family:Arial,sans-serif;background:#f0f0f0;min-height:100vh}
   </div>
 </div>
 
+<!-- MESSAGE D'ACCUEIL (affiché après le mot de passe) -->
+<div class="ov" id="welcomeOv" style="z-index:10000;">
+  <div class="modal" style="width:520px;">
+    <h2 id="welcomeTitle">📢 Information</h2>
+    <div id="welcomeText" style="font-size:14px;line-height:1.55;color:#333;white-space:pre-wrap;margin-bottom:6px;"></div>
+    <div class="ma" style="margin-top:18px;">
+      <button class="br" onclick="OV.close('welcomeOv')">J'ai lu — accéder au site</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADMIN MESSAGE D'ACCUEIL -->
+<div class="ov" id="welcomeAdminOv">
+  <div class="modal" style="width:480px;">
+    <h2>📢 Message d'accueil</h2>
+    <div class="field" style="flex-direction:row;align-items:center;gap:8px;"><input type="checkbox" id="wmOn" style="width:auto;"><label for="wmOn" style="margin:0;">Afficher le message après le mot de passe</label></div>
+    <div class="field"><label>Titre</label><input type="text" id="wmTitle" placeholder="Ex : Information importante"></div>
+    <div class="field"><label>Texte</label><textarea id="wmText" rows="7" placeholder="Votre message..." style="border:.5px solid #ccc;border-radius:4px;padding:7px 10px;font-size:12px;font-family:Arial,sans-serif;width:100%;resize:vertical;"></textarea><div class="hint">Les retours à la ligne sont conservés.</div></div>
+    <div id="wmOk" style="color:#22c55e;font-size:11px;font-weight:700;margin-bottom:8px;display:none;">✅ Enregistré !</div>
+    <div class="ma">
+      <button class="bg" onclick="OV.sw('welcomeAdminOv','globalOv')">← Retour</button>
+      <button class="bg" onclick="previewWelcome()">Aperçu</button>
+      <button class="br" onclick="saveWelcome()">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
 <!-- CHANGE PWD -->
 <div class="ov" id="changePwdOv">
   <div class="modal" style="width:380px;">
@@ -427,11 +455,43 @@ var OV={
 var APWD='Lalala';
 async function initPwd(){var s=await getSetting('access_pwd');if(s)APWD=s;}
 function doLogin(){
-  if(document.getElementById('loginInput').value.trim()===APWD){document.getElementById('loginPage').style.display='none';}
+  if(document.getElementById('loginInput').value.trim()===APWD){document.getElementById('loginPage').style.display='none';showWelcome();}
   else{document.getElementById('loginError').style.display='block';document.getElementById('loginInput').value='';document.getElementById('loginInput').focus();}
 }
 document.getElementById('loginBtn').onclick=doLogin;
 document.getElementById('loginInput').addEventListener('keydown',function(e){if(e.key==='Enter')doLogin();});
+
+/* ===== MESSAGE D'ACCUEIL =====
+   Enregistré dans la table settings (clé welcome_msg). Affiché à chaque connexion ;
+   le site n'est accessible qu'après avoir cliqué sur le bouton. */
+async function getWelcome(){
+  var v=await getSetting('welcome_msg');if(!v)return {on:false,title:'',text:''};
+  try{var o=typeof v==='string'?JSON.parse(v):v;return {on:!!o.on,title:o.title||'',text:o.text||''};}catch(e){return {on:false,title:'',text:''};}
+}
+function fillWelcome(w){
+  document.getElementById('welcomeTitle').textContent=w.title?'📢 '+w.title:'📢 Information';
+  document.getElementById('welcomeText').textContent=w.text;
+}
+async function showWelcome(){
+  try{var w=await getWelcome();if(!w.on||!w.text.trim())return;fillWelcome(w);OV.open('welcomeOv');}catch(e){}
+}
+async function openWelcomeAdmin(){
+  var w=await getWelcome();
+  document.getElementById('wmOn').checked=w.on;
+  document.getElementById('wmTitle').value=w.title;
+  document.getElementById('wmText').value=w.text;
+  document.getElementById('wmOk').style.display='none';
+  OV.sw('globalOv','welcomeAdminOv');
+}
+function previewWelcome(){
+  fillWelcome({title:document.getElementById('wmTitle').value.trim(),text:document.getElementById('wmText').value});
+  OV.open('welcomeOv');
+}
+async function saveWelcome(){
+  var w={on:document.getElementById('wmOn').checked,title:document.getElementById('wmTitle').value.trim(),text:document.getElementById('wmText').value};
+  await setSetting('welcome_msg',JSON.stringify(w));
+  var ok=document.getElementById('wmOk');ok.style.display='block';setTimeout(function(){ok.style.display='none';},2500);
+}
 
 /* ===== ADMIN TRIGGER ===== */
 var kseq='';
