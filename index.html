@@ -268,7 +268,8 @@ body{font-family:Arial,sans-serif;background:#f0f0f0;min-height:100vh}
     <div class="slabel">Produits actuels</div>
     <div class="alist" id="prodList"></div>
     <div class="sep">
-      <div class="slabel">Ajouter / Modifier</div>
+      <div class="slabel" id="prodFormLbl" style="font-size:12px;">➕ Nouveau produit</div>
+      <div id="prodSaved" style="color:#22c55e;font-size:11px;font-weight:700;margin:4px 0 8px;display:none;">✅ Produit enregistré !</div>
       <input type="hidden" id="prodEditId" value="">
       <div class="field"><label>Section</label>
         <select id="prodSection" onchange="onSecChange()">
@@ -348,6 +349,11 @@ body{font-family:Arial,sans-serif;background:#f0f0f0;min-height:100vh}
 <div id="lbOv" onclick="if(event.target===this)closeLb()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:10001;align-items:center;justify-content:center;padding:20px;">
   <button onclick="closeLb()" aria-label="Fermer" style="position:absolute;top:14px;right:18px;width:44px;height:44px;border-radius:50%;border:none;background:#fff;color:#E2001A;font-size:26px;font-weight:900;line-height:44px;cursor:pointer;box-shadow:0 2px 10px rgba(0,0,0,.4);">✕</button>
   <img id="lbImg" src="" alt="" style="max-width:94vw;max-height:88vh;border-radius:8px;box-shadow:0 6px 30px rgba(0,0,0,.5);background:#fff;">
+  <div id="lbErr" style="display:none;background:#fff;border-radius:10px;padding:24px;max-width:420px;text-align:center;font-size:13px;color:#333;line-height:1.5;">
+    <div style="font-weight:900;color:#E2001A;margin-bottom:8px;">Impossible d'afficher cette image ici</div>
+    <div style="margin-bottom:14px;">Le lien enregistré n'est pas une image directe (par exemple un lien de partage SharePoint).</div>
+    <a id="lbErrLink" href="#" target="_blank" class="br" style="text-decoration:none;display:inline-block;">Ouvrir le lien dans un nouvel onglet</a>
+  </div>
 </div>
 
 <!-- CHANGE PWD -->
@@ -787,16 +793,25 @@ function clickReg(key,url,img){
   var mode=CLKM[key]==='image'?'image':'link';
   if(mode==='link'&&!url)return '';
   if(mode==='image'&&!url&&!img)return '';
-  CLK[key]={m:mode,u:url||img};
+  CLK[key]={m:mode,u:url||img,f:img};
   return 'clickAct(\''+key+'\',event)';
 }
 function clickAct(key,ev){
   var a=CLK[key];if(!a)return;
   if(ev){ev.preventDefault();ev.stopPropagation();}
-  if(a.m==='image')openLb(a.u);else window.open(a.u,'_blank');
+  if(a.m==='image')openLb(a.u,a.f);else window.open(a.u,'_blank');
 }
-function openLb(u){document.getElementById('lbImg').src=u;document.getElementById('lbOv').style.display='flex';}
-function closeLb(){document.getElementById('lbOv').style.display='none';document.getElementById('lbImg').src='';}
+// Si l'image ne s'affiche pas (lien de partage, page web...), on montre l'image de la vignette, sinon un message
+function openLb(u,fb){
+  var im=document.getElementById('lbImg'),er=document.getElementById('lbErr');
+  er.style.display='none';im.style.display='';
+  im.onerror=function(){
+    if(fb&&im.getAttribute('src')!==fb){im.src=fb;return;}
+    im.style.display='none';document.getElementById('lbErrLink').href=u;er.style.display='block';
+  };
+  im.src=u;document.getElementById('lbOv').style.display='flex';
+}
+function closeLb(){var im=document.getElementById('lbImg');im.onerror=null;document.getElementById('lbOv').style.display='none';im.src='';}
 document.addEventListener('keydown',function(e){if(e.key==='Escape')closeLb();});
 
 /* ===== PRODUCTS DATA ===== */
@@ -884,6 +899,9 @@ function editProd(i){
   document.getElementById('prodDetailUrl').value=p.detail_url||'';
   document.getElementById('prodMode').value=CLKM['p'+p.id]==='image'?'image':'link';
   if(p.img){document.getElementById('prodImgPrev').src=p.img;document.getElementById('prodImgPrev').style.display='block';}
+  var lb=document.getElementById('prodFormLbl');lb.textContent='✏️ Modification de : '+(p.name||'');lb.style.color='#E2001A';
+  document.getElementById('prodSaved').style.display='none';
+  lb.scrollIntoView({behavior:'smooth',block:'start'});
 }
 async function delProd(i){
   if(confirm('Supprimer ce produit ?')){
@@ -892,6 +910,7 @@ async function delProd(i){
   }
 }
 function resetProd(){
+  var lb=document.getElementById('prodFormLbl');if(lb){lb.textContent='➕ Nouveau produit';lb.style.color='';}
   document.getElementById('prodEditId').value='';
   document.getElementById('prodMode').value='link';
   ['prodName','prodOld','prodNew','prodImgUrl','prodDetailUrl'].forEach(function(id){document.getElementById(id).value='';});
@@ -902,7 +921,7 @@ async function saveProd(){
   var name=document.getElementById('prodName').value.trim();
   var oldP=document.getElementById('prodOld').value.trim();
   var newP=document.getElementById('prodNew').value.trim();
-  if(!name){alert('Nom requis.');return;}
+  if(!name){alert(document.getElementById('prodEditId').value?'Le nom du produit est obligatoire.':'Le formulaire est vide.\n\nPour modifier un produit existant, cliquez d\'abord sur « Modifier » à côté du produit dans la liste « Produits actuels ».\nPour ajouter un nouveau produit, remplissez au moins son nom.');return;}
   var sec=document.getElementById('prodSection').value;
   var qty=parseInt(document.getElementById('prodQty').value)||null;
   var sd=document.getElementById('prodStart').value||null;
@@ -928,6 +947,7 @@ async function saveProd(){
   }
   if(id)await setClickMode('p'+id,document.getElementById('prodMode').value);
   adminSec=sec;await loadAdminProds();renderGrid(sec);if(curPage==='home')renderHome();resetProd();
+  var sv=document.getElementById('prodSaved');sv.style.display='block';setTimeout(function(){sv.style.display='none';},3000);
 }
 document.getElementById('prodImgFile').addEventListener('change',function(e){var f=e.target.files[0];if(!f)return;var r=new FileReader();r.onload=function(ev){document.getElementById('prodImgPrev').src=ev.target.result;document.getElementById('prodImgPrev').style.display='block';};r.readAsDataURL(f);});
 document.getElementById('prodImgUrl').addEventListener('input',function(){var v=this.value.trim();if(v){document.getElementById('prodImgPrev').src=v;document.getElementById('prodImgPrev').style.display='block';}else{document.getElementById('prodImgPrev').style.display='none';}});
