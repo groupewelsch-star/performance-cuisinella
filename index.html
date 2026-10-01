@@ -125,7 +125,7 @@ body{font-family:Arial,sans-serif;background:#f0f0f0;min-height:100vh}
       <button class="br" onclick="openAddSidebarBloc()">➕ Ajouter un bloc sidebar</button>
       <button class="br" onclick="openManageSidebarBlocs()">📋 Gérer les blocs sidebar</button>
       <button class="br" onclick="openProductsAdmin()">🛍️ Gérer les produits</button>
-      <button class="br" onclick="openWelcomeAdmin()">📢 Message d'accueil</button>
+      <button class="br" onclick="openWelcomeAdmin()">📢 Messages d'accueil</button>
       <button class="br" onclick="OV.sw('globalOv','changePwdOv')">🔑 Changer le mot de passe d'accès</button>
     </div>
     <div class="ma" style="margin-top:16px;">
@@ -187,12 +187,14 @@ body{font-family:Arial,sans-serif;background:#f0f0f0;min-height:100vh}
   <div class="modal" style="width:440px;">
     <h2 id="ebFormTitle">➕ Ajouter une bannière</h2>
     <input type="hidden" id="ebEditId" value="">
+    <div class="field"><label>🏷️ Nom interne (visible uniquement dans l'administration)</label><input type="text" id="ebName" placeholder="Ex : Coulissants octobre"></div>
     <div class="field"><label>Upload image</label><input type="file" id="ebFile" accept="image/*"></div>
     <div style="font-size:10px;color:#aaa;margin:6px 0;text-align:center;">— ou —</div>
     <div class="field"><label>URL image</label><input type="text" id="ebUrl" placeholder="https://..."></div>
     <img id="ebPrev" class="iprev" src="" alt="">
     <div class="field" style="margin-top:8px;"><label>Texte de condition</label><input type="text" id="ebCondition" placeholder="Ex: Offre valable jusqu'au 30 juin"></div>
-    <div class="field"><label>🔗 Lien au clic (optionnel)</label><input type="text" id="ebLink" placeholder="https://..."></div>
+    <div class="field"><label>Action au clic</label><select id="ebMode"><option value="link">🔗 Ouvrir un lien internet (nouvelle page)</option><option value="image">🔍 Afficher une image en grand sur le site</option></select><div class="hint">Mode image : mettez l'adresse de l'image à agrandir dans le champ ci-dessous. Laissé vide, c'est l'image de la vignette qui s'agrandit.</div></div>
+    <div class="field"><label>🔗 Lien ou image au clic (optionnel)</label><input type="text" id="ebLink" placeholder="https://..."></div>
     <div class="frow">
       <div class="field"><label>Date de début</label><input type="date" id="ebStart"><div class="hint">N'apparaît pas avant cette date.</div></div>
       <div class="field"><label>Quantité disponible</label><input type="number" id="ebQty" placeholder="Ex: 20" min="1"></div>
@@ -293,7 +295,8 @@ body{font-family:Arial,sans-serif;background:#f0f0f0;min-height:100vh}
       </div>
       <div class="field"><label>Date d'épuisement</label><input type="date" id="prodEnd"><div class="hint">Stock décroît jusqu'à cette date.</div></div>
       <div class="field"><label>Image URL</label><input type="text" id="prodImgUrl" placeholder="https://..."></div>
-      <div class="field"><label>🔗 Lien "Détail" (optionnel)</label><input type="text" id="prodDetailUrl" placeholder="https://... (fiche produit, site fabricant...)"><div class="hint">Si rempli, un bouton "Détail →" apparaîtra sur la vignette.</div></div>
+      <div class="field"><label>Action au clic</label><select id="prodMode"><option value="link">🔗 Ouvrir un lien internet (nouvelle page)</option><option value="image">🔍 Afficher une image en grand sur le site</option></select><div class="hint">Mode image : mettez l'adresse de l'image à agrandir dans le champ ci-dessous. Laissé vide, c'est l'image de la vignette qui s'agrandit.</div></div>
+      <div class="field"><label>🔗 Lien ou image "Détail" (optionnel)</label><input type="text" id="prodDetailUrl" placeholder="https://... (fiche produit, site fabricant, image...)"><div class="hint">Si rempli (ou en mode image), un bouton "Détail →" apparaîtra sur la vignette.</div></div>
       <input type="file" id="prodImgFile" accept="image/*" style="font-size:11px;width:100%;margin-bottom:6px;">
       <img id="prodImgPrev" class="iprev" src="" alt="">
     </div>
@@ -310,25 +313,41 @@ body{font-family:Arial,sans-serif;background:#f0f0f0;min-height:100vh}
     <h2 id="welcomeTitle">📢 Information</h2>
     <div id="welcomeText" style="font-size:14px;line-height:1.55;color:#333;white-space:pre-wrap;margin-bottom:6px;"></div>
     <div class="ma" style="margin-top:18px;">
-      <button class="br" onclick="OV.close('welcomeOv')">J'ai lu — accéder au site</button>
+      <button class="br" onclick="nextWelcome()">J'ai lu — accéder au site</button>
     </div>
   </div>
 </div>
 
-<!-- ADMIN MESSAGE D'ACCUEIL -->
+<!-- ADMIN MESSAGES D'ACCUEIL -->
 <div class="ov" id="welcomeAdminOv">
-  <div class="modal" style="width:480px;">
-    <h2>📢 Message d'accueil</h2>
-    <div class="field" style="flex-direction:row;align-items:center;gap:8px;"><input type="checkbox" id="wmOn" style="width:auto;"><label for="wmOn" style="margin:0;">Afficher le message après le mot de passe</label></div>
+  <div class="modal" style="width:520px;">
+    <h2>📢 Messages d'accueil</h2>
+    <div class="hint" style="font-size:11px;color:#888;margin-bottom:10px;">Chaque message s'affiche après le mot de passe, uniquement entre ses dates. Vous pouvez en programmer plusieurs à l'avance ; s'il y en a plusieurs en même temps, ils s'affichent l'un après l'autre.</div>
+    <div class="alist" id="wmList"></div>
+    <h2 id="wmFormTitle" style="font-size:13px;">➕ Nouveau message</h2>
+    <input type="hidden" id="wmId">
     <div class="field"><label>Titre</label><input type="text" id="wmTitle" placeholder="Ex : Information importante"></div>
-    <div class="field"><label>Texte</label><textarea id="wmText" rows="7" placeholder="Votre message..." style="border:.5px solid #ccc;border-radius:4px;padding:7px 10px;font-size:12px;font-family:Arial,sans-serif;width:100%;resize:vertical;"></textarea><div class="hint">Les retours à la ligne sont conservés.</div></div>
+    <div class="field"><label>Texte</label><textarea id="wmText" rows="6" placeholder="Votre message..." style="border:.5px solid #ccc;border-radius:4px;padding:7px 10px;font-size:12px;font-family:Arial,sans-serif;width:100%;resize:vertical;"></textarea><div class="hint">Les retours à la ligne sont conservés.</div></div>
+    <div class="frow">
+      <div class="field"><label>Apparaît le</label><input type="date" id="wmStart"><div class="hint">Vide = dès maintenant</div></div>
+      <div class="field"><label>Disparaît après le</label><input type="date" id="wmEnd"><div class="hint">Vide = sans fin</div></div>
+    </div>
+    <div class="field" style="flex-direction:row;align-items:center;gap:8px;"><input type="checkbox" id="wmOn" style="width:auto;" checked><label for="wmOn" style="margin:0;">Message actif</label></div>
+    <div id="wmErr" style="color:#E2001A;font-size:11px;font-weight:700;margin-bottom:8px;display:none;"></div>
     <div id="wmOk" style="color:#22c55e;font-size:11px;font-weight:700;margin-bottom:8px;display:none;">✅ Enregistré !</div>
     <div class="ma">
       <button class="bg" onclick="OV.sw('welcomeAdminOv','globalOv')">← Retour</button>
+      <button class="bg" onclick="resetWelcomeForm()">Vider</button>
       <button class="bg" onclick="previewWelcome()">Aperçu</button>
       <button class="br" onclick="saveWelcome()">Enregistrer</button>
     </div>
   </div>
+</div>
+
+<!-- IMAGE EN GRAND -->
+<div id="lbOv" onclick="if(event.target===this)closeLb()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:10001;align-items:center;justify-content:center;padding:20px;">
+  <button onclick="closeLb()" aria-label="Fermer" style="position:absolute;top:14px;right:18px;width:44px;height:44px;border-radius:50%;border:none;background:#fff;color:#E2001A;font-size:26px;font-weight:900;line-height:44px;cursor:pointer;box-shadow:0 2px 10px rgba(0,0,0,.4);">✕</button>
+  <img id="lbImg" src="" alt="" style="max-width:94vw;max-height:88vh;border-radius:8px;box-shadow:0 6px 30px rgba(0,0,0,.5);background:#fff;">
 </div>
 
 <!-- CHANGE PWD -->
@@ -461,35 +480,105 @@ function doLogin(){
 document.getElementById('loginBtn').onclick=doLogin;
 document.getElementById('loginInput').addEventListener('keydown',function(e){if(e.key==='Enter')doLogin();});
 
-/* ===== MESSAGE D'ACCUEIL =====
-   Enregistré dans la table settings (clé welcome_msg). Affiché à chaque connexion ;
-   le site n'est accessible qu'après avoir cliqué sur le bouton. */
-async function getWelcome(){
-  var v=await getSetting('welcome_msg');if(!v)return {on:false,title:'',text:''};
-  try{var o=typeof v==='string'?JSON.parse(v):v;return {on:!!o.on,title:o.title||'',text:o.text||''};}catch(e){return {on:false,title:'',text:''};}
+/* ===== MESSAGES D'ACCUEIL =====
+   Liste enregistrée dans la table settings (clé welcome_msgs) :
+   [{id,title,text,start:'AAAA-MM-JJ',end:'AAAA-MM-JJ',on}]
+   Un message s'affiche après le mot de passe si : actif, début <= aujourd'hui <= fin.
+   Plusieurs messages actifs = affichés l'un après l'autre, chacun doit être fermé. */
+var WMS=[],WQ=[];
+function today(){var d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function frDate(s){if(!s)return '';var p=s.split('-');return p[2]+'/'+p[1]+'/'+p[0];}
+async function getWelcomes(){
+  var v=await getSetting('welcome_msgs'),l=[];
+  try{l=v?(typeof v==='string'?JSON.parse(v):v):[];}catch(e){l=[];}
+  if(!Array.isArray(l))l=[];
+  if(!v){ // reprise de l'ancien message unique s'il existe
+    var o=await getSetting('welcome_msg');
+    try{o=o?(typeof o==='string'?JSON.parse(o):o):null;}catch(e){o=null;}
+    if(o&&o.text)l=[{id:Date.now(),title:o.title||'',text:o.text,start:'',end:'',on:!!o.on}];
+  }
+  return l;
 }
+function isLive(m){var t=today();return m.on&&m.text&&m.text.trim()&&(!m.start||m.start<=t)&&(!m.end||t<=m.end);}
 function fillWelcome(w){
   document.getElementById('welcomeTitle').textContent=w.title?'📢 '+w.title:'📢 Information';
   document.getElementById('welcomeText').textContent=w.text;
 }
+function nextWelcome(){
+  OV.close('welcomeOv');
+  if(WQ.length){var m=WQ.shift();setTimeout(function(){fillWelcome(m);OV.open('welcomeOv');},150);}
+}
 async function showWelcome(){
-  try{var w=await getWelcome();if(!w.on||!w.text.trim())return;fillWelcome(w);OV.open('welcomeOv');}catch(e){}
+  try{
+    var l=await getWelcomes();
+    WQ=l.filter(isLive).sort(function(a,b){return (a.start||'').localeCompare(b.start||'');});
+    if(WQ.length){fillWelcome(WQ.shift());OV.open('welcomeOv');}
+  }catch(e){}
+}
+function wmStatus(m){
+  var t=today();
+  if(!m.on)return '<span style="color:#999;">Désactivé</span>';
+  if(m.end&&m.end<t)return '<span style="color:#999;">Terminé</span>';
+  if(m.start&&m.start>t)return '<span style="color:#f59e0b;">Programmé</span>';
+  return '<span style="color:#22c55e;">En cours</span>';
+}
+function renderWelcomeList(){
+  var el=document.getElementById('wmList');
+  if(!WMS.length){el.innerHTML='<div style="color:#bbb;font-size:12px;text-align:center;padding:10px;">Aucun message.</div>';return;}
+  var l=WMS.slice().sort(function(a,b){return (a.start||'').localeCompare(b.start||'');});
+  el.innerHTML=l.map(function(m){
+    var per=(m.start?'du '+frDate(m.start):'dès maintenant')+(m.end?' au '+frDate(m.end):' — sans fin');
+    var ttl=(m.title||m.text||'').replace(/[<>&]/g,'').slice(0,50);
+    return '<div class="aitem"><div><div class="aiinfo">'+(ttl||'(sans titre)')+'</div><div class="aisub">'+wmStatus(m)+' — '+per+'</div></div><div class="aiact"><button class="bedit" onclick="editWelcome('+m.id+')">Modifier</button><button class="bdel" onclick="delWelcome('+m.id+')">Supprimer</button></div></div>';
+  }).join('');
+}
+function resetWelcomeForm(){
+  ['wmId','wmTitle','wmText','wmStart','wmEnd'].forEach(function(k){document.getElementById(k).value='';});
+  document.getElementById('wmOn').checked=true;
+  document.getElementById('wmFormTitle').textContent='➕ Nouveau message';
+  document.getElementById('wmErr').style.display='none';
 }
 async function openWelcomeAdmin(){
-  var w=await getWelcome();
-  document.getElementById('wmOn').checked=w.on;
-  document.getElementById('wmTitle').value=w.title;
-  document.getElementById('wmText').value=w.text;
+  WMS=await getWelcomes();renderWelcomeList();resetWelcomeForm();
   document.getElementById('wmOk').style.display='none';
   OV.sw('globalOv','welcomeAdminOv');
 }
+function editWelcome(id){
+  var m=WMS.find(function(x){return x.id===id;});if(!m)return;
+  document.getElementById('wmId').value=m.id;
+  document.getElementById('wmTitle').value=m.title||'';
+  document.getElementById('wmText').value=m.text||'';
+  document.getElementById('wmStart').value=m.start||'';
+  document.getElementById('wmEnd').value=m.end||'';
+  document.getElementById('wmOn').checked=!!m.on;
+  document.getElementById('wmFormTitle').textContent='✏️ Modifier le message';
+}
+async function delWelcome(id){
+  if(!confirm('Supprimer ce message ?'))return;
+  WMS=WMS.filter(function(x){return x.id!==id;});
+  await setSetting('welcome_msgs',JSON.stringify(WMS));
+  renderWelcomeList();resetWelcomeForm();
+}
 function previewWelcome(){
-  fillWelcome({title:document.getElementById('wmTitle').value.trim(),text:document.getElementById('wmText').value});
+  WQ=[];fillWelcome({title:document.getElementById('wmTitle').value.trim(),text:document.getElementById('wmText').value});
   OV.open('welcomeOv');
 }
 async function saveWelcome(){
-  var w={on:document.getElementById('wmOn').checked,title:document.getElementById('wmTitle').value.trim(),text:document.getElementById('wmText').value};
-  await setSetting('welcome_msg',JSON.stringify(w));
+  var err=document.getElementById('wmErr');err.style.display='none';
+  var m={
+    id:parseInt(document.getElementById('wmId').value,10)||Date.now(),
+    title:document.getElementById('wmTitle').value.trim(),
+    text:document.getElementById('wmText').value,
+    start:document.getElementById('wmStart').value,
+    end:document.getElementById('wmEnd').value,
+    on:document.getElementById('wmOn').checked
+  };
+  if(!m.text.trim()){err.textContent='Le texte est obligatoire.';err.style.display='block';return;}
+  if(m.start&&m.end&&m.end<m.start){err.textContent='La date de fin est avant la date de début.';err.style.display='block';return;}
+  var i=WMS.findIndex(function(x){return x.id===m.id;});
+  if(i>=0)WMS[i]=m;else WMS.push(m);
+  await setSetting('welcome_msgs',JSON.stringify(WMS));
+  renderWelcomeList();resetWelcomeForm();
   var ok=document.getElementById('wmOk');ok.style.display='block';setTimeout(function(){ok.style.display='none';},2500);
 }
 
@@ -565,6 +654,13 @@ function mkCurve(qty,end,created,startDate,key){
   var e=new Date(end).getTime();
   var c={q:+qty,s:start,e:e,k:key};
   if(!start||!(e>start))return c;
+  // Ouverture : jamais de baisse avant 9h30 le jour de la mise en ligne
+  var od;
+  if(startDate&&/^\d{4}-\d{2}-\d{2}/.test(startDate)){var pp=startDate.slice(0,10).split('-');od=new Date(+pp[0],pp[1]-1,+pp[2],9,30,0,0);}
+  else{od=new Date(start);var o930=new Date(od.getFullYear(),od.getMonth(),od.getDate(),9,30,0,0);if(od<o930)od=o930;}
+  c.o=Math.min(od.getTime(),e);
+  // Démarrage progressif : 3 pièces max la première demi-heure, puis au plus 3x le rythme moyen
+  c.rate=3*c.q/Math.max(1,(e-start)/36e5);
   var seed=hstr(key)+(start%9973);
   var days=Math.max(1,Math.ceil((e-start)/864e5));
   // Ventes quotidiennes aléatoires propres au produit (certains jours forts, d'autres calmes)
@@ -582,7 +678,13 @@ function stockAt(c,now){
   var el=(now-c.s)/864e5,d=Math.floor(el),frac=el-d;
   var cum=d>=c.days?c.cw[c.days]:c.cw[d]+(c.cw[d+1]-c.cw[d])*frac;
   var r=Math.pow(Math.min(1,cum/c.cw[c.days]),c.a);
-  return Math.max(0,Math.min(c.q,Math.round(c.q*(1-r))));
+  var v=Math.max(0,Math.min(c.q,Math.round(c.q*(1-r))));
+  if(c.o){
+    if(now<c.o)return c.q;
+    var mn=(now-c.o)/6e4,maxDrop=mn<=30?3:3+c.rate*(mn-30)/60;
+    v=Math.max(v,c.q-Math.floor(maxDrop));
+  }
+  return v;
 }
 function rawStock(qty,end,created,startDate,key){return stockAt(mkCurve(qty,end,created,startDate,key),Date.now());}
 
@@ -609,6 +711,7 @@ function buildStockMap(prods,banners,nowMs){
     for(var i=0;i<items.length;i++){
       var c=items[i];
       if(c.s&&t<c.s)continue; // pas encore en ligne
+      if(c.o&&t<c.o){prev[c.k]=c.q;continue;} // avant 9h30 le jour de mise en ligne : stock complet
       var r=stockAt(c,t),v=Math.min(r,prev[c.k]);
       if(v<=0){prev[c.k]=0;continue;} // épuisé
       live.push({c:c,v:v,r:r,o:i});
@@ -669,6 +772,33 @@ function goPage(p){
   curPage=p;
 }
 
+/* ===== ACTION AU CLIC (lien ou image en grand) =====
+   Mode enregistré dans settings (clé click_modes) : {"p12":"image","b7":"image"} ; absent = lien. */
+var CLKM={},CLK={};
+async function loadClickModes(){var v=await getSetting('click_modes');try{v=v?(typeof v==='string'?JSON.parse(v):v):{};}catch(e){v={};}CLKM=v&&typeof v==='object'?v:{};return CLKM;}
+async function setClickMode(key,mode){
+  if(!key||key.length<2)return;
+  await loadClickModes();
+  if(mode==='image')CLKM[key]='image';else delete CLKM[key];
+  await setSetting('click_modes',JSON.stringify(CLKM));
+}
+// enregistre l'action d'une vignette et renvoie l'attribut onclick à utiliser (ou '' si aucune action)
+function clickReg(key,url,img){
+  var mode=CLKM[key]==='image'?'image':'link';
+  if(mode==='link'&&!url)return '';
+  if(mode==='image'&&!url&&!img)return '';
+  CLK[key]={m:mode,u:url||img};
+  return 'clickAct(\''+key+'\',event)';
+}
+function clickAct(key,ev){
+  var a=CLK[key];if(!a)return;
+  if(ev){ev.preventDefault();ev.stopPropagation();}
+  if(a.m==='image')openLb(a.u);else window.open(a.u,'_blank');
+}
+function openLb(u){document.getElementById('lbImg').src=u;document.getElementById('lbOv').style.display='flex';}
+function closeLb(){document.getElementById('lbOv').style.display='none';document.getElementById('lbImg').src='';}
+document.addEventListener('keydown',function(e){if(e.key==='Escape')closeLb();});
+
 /* ===== PRODUCTS DATA ===== */
 async function getProds(sec){return await sb('products?section=eq.'+sec+'&order=id.asc');}
 async function getAllProds(){return await sb('products?order=id.asc');}
@@ -678,13 +808,13 @@ function pcHtml(p,showCat){
   var img=p.img?'<img src="'+p.img+'" alt="'+p.name+'">':nophoto();
   var sh='';
   if(s!==null){var r=p.qty>0?s/p.qty:0,pct=Math.round(r*100),c=scol(r);sh='<div class="swrap"><div class="slbl"><span style="color:'+(ep?'#E2001A':'#555')+';font-weight:700;">'+(ep?'Épuisé':'Stock : <b>'+s+'</b> / '+p.qty+' pièces')+'</span>'+((!ep&&s<=Math.ceil(p.qty*.25))?'<span style="color:#E2001A;font-weight:700;">⚠ Faible</span>':'')+'</div><div class="sbar"><div class="sfill" style="width:'+pct+'%;background:'+c+';"></div></div></div>';}
-  return '<div class="pc'+(ep?' ep':'')+'"><div class="pimg">'+(showCat&&p.cat?'<div class="cbadge">'+p.cat+'</div>':'')+img+(ep?'<div class="eflag"><span>ÉPUISÉ</span></div>':'')+'</div><div class="pbody"><div class="pname">'+p.name+'</div><div class="pprices"><span class="pnew">'+(p.new_price||'')+'</span><span class="pold">'+(p.old_price||'')+'</span></div>'+(d?'<div class="pdis">'+d+'</div>':'')+sh+(p.detail_url?'<div style="margin-top:8px;"><a href="'+p.detail_url+'" target="_blank" style="display:inline-block;background:#E2001A;color:#fff;border-radius:4px;padding:5px 12px;font-size:11px;font-weight:700;text-decoration:none;">Détail →</a></div>':'')+'</div></div>';
+  return '<div class="pc'+(ep?' ep':'')+'"><div class="pimg">'+(showCat&&p.cat?'<div class="cbadge">'+p.cat+'</div>':'')+img+(ep?'<div class="eflag"><span>ÉPUISÉ</span></div>':'')+'</div><div class="pbody"><div class="pname">'+p.name+'</div><div class="pprices"><span class="pnew">'+(p.new_price||'')+'</span><span class="pold">'+(p.old_price||'')+'</span></div>'+(d?'<div class="pdis">'+d+'</div>':'')+sh+(function(){var oc=clickReg('p'+p.id,p.detail_url,p.img);return oc?'<div style="margin-top:8px;"><a href="#" onclick="'+oc+'" style="display:inline-block;background:#E2001A;color:#fff;border-radius:4px;padding:5px 12px;font-size:11px;font-weight:700;text-decoration:none;">Détail →</a></div>':'';})()+'</div></div>';
 }
 
 async function renderGrid(sec){
   var g=document.getElementById('grid-'+sec);
   g.innerHTML='<div class="loading">Chargement...</div>';
-  var list=await getProds(sec);await ensureStock();
+  var list=await getProds(sec);await ensureStock();await loadClickModes();
   list=list.filter(function(p){return vis(p.start_date);});
   if(sec==='electro'&&actCat!=='Tous')list=list.filter(function(p){return p.cat===actCat;});
   g.innerHTML=list.length?list.map(function(p){return pcHtml(p,sec==='electro');}).join(''):'<div class="empty">Aucun produit.</div>';
@@ -724,7 +854,7 @@ function onSecChange(){
   loadAdminProds();
 }
 async function loadAdminProds(){
-  adminProds=await getProds(adminSec);await ensureStock();
+  adminProds=await getProds(adminSec);await ensureStock();await loadClickModes();
   var l=document.getElementById('prodList');
   if(!adminProds.length){l.innerHTML='<div style="color:#bbb;font-size:12px;text-align:center;padding:10px;">Aucun produit.</div>';return;}
   l.innerHTML=adminProds.map(function(p,i){
@@ -752,6 +882,7 @@ function editProd(i){
   document.getElementById('prodStart').value=p.start_date||'';
   document.getElementById('prodEnd').value=p.end_date||'';
   document.getElementById('prodDetailUrl').value=p.detail_url||'';
+  document.getElementById('prodMode').value=CLKM['p'+p.id]==='image'?'image':'link';
   if(p.img){document.getElementById('prodImgPrev').src=p.img;document.getElementById('prodImgPrev').style.display='block';}
 }
 async function delProd(i){
@@ -762,7 +893,8 @@ async function delProd(i){
 }
 function resetProd(){
   document.getElementById('prodEditId').value='';
-  ['prodName','prodOld','prodNew','prodImgUrl'].forEach(function(id){document.getElementById(id).value='';});
+  document.getElementById('prodMode').value='link';
+  ['prodName','prodOld','prodNew','prodImgUrl','prodDetailUrl'].forEach(function(id){document.getElementById(id).value='';});
   document.getElementById('prodQty').value='';document.getElementById('prodStart').value='';document.getElementById('prodEnd').value='';
   document.getElementById('prodImgFile').value='';document.getElementById('prodImgPrev').style.display='none';document.getElementById('prodImgPrev').src='';
 }
@@ -792,7 +924,9 @@ async function saveProd(){
   } else {
     prod.created_at=Date.now();
     await sb('products',{method:'POST',headers:{'Prefer':'return=minimal'},body:JSON.stringify(prod)});
+    var np=await sb('products?created_at=eq.'+prod.created_at+'&select=id');if(np.length)id=np[0].id;
   }
+  if(id)await setClickMode('p'+id,document.getElementById('prodMode').value);
   adminSec=sec;await loadAdminProds();renderGrid(sec);if(curPage==='home')renderHome();resetProd();
 }
 document.getElementById('prodImgFile').addEventListener('change',function(e){var f=e.target.files[0];if(!f)return;var r=new FileReader();r.onload=function(ev){document.getElementById('prodImgPrev').src=ev.target.result;document.getElementById('prodImgPrev').style.display='block';};r.readAsDataURL(f);});
@@ -851,7 +985,7 @@ async function saveBloc(n){
 /* ===== EXTRA BANNERS ===== */
 async function getExtraBanners(){return await sb('banners?order=position.asc');}
 async function renderExtraBanners(){
-  var banners=await getExtraBanners();await ensureStock();
+  var banners=await getExtraBanners();await ensureStock();await loadClickModes();
   var container=document.getElementById('extraBnrWrap');
   banners=banners.filter(function(b){return vis(b.start_date);});
   if(!banners.length){container.innerHTML='';return;}
@@ -860,7 +994,8 @@ async function renderExtraBanners(){
     var r=b.qty&&s!==null?s/b.qty:1,c=scol(r),pct=Math.round(r*100);
     var sh=s!==null?'<div style="margin-top:8px;"><div style="display:flex;justify-content:space-between;font-size:10px;font-weight:700;margin-bottom:3px;"><span style="color:'+(ep?'#FFD600':'rgba(255,255,255,.9)')+'">'+(ep?'⚠ ÉPUISÉ':'Stock : '+s+' / '+b.qty+' disponibles')+'</span>'+((!ep&&s<=Math.ceil(b.qty*.25))?'<span style="color:#FFD600;">⚠ Faible</span>':'')+'</div><div style="height:5px;background:rgba(255,255,255,.2);border-radius:3px;overflow:hidden;"><div style="height:100%;width:'+pct+'%;background:'+c+';border-radius:3px;"></div></div></div>':'';
     var ch=b.condition_text?'<div style="font-size:10px;color:rgba(255,255,255,.75);margin-top:6px;font-style:italic;">'+b.condition_text+'</div>':'';
-    return '<div style="position:relative;border-radius:8px;overflow:hidden;cursor:'+(b.link?'pointer':'default')+';background:#1a1a1a;" '+(b.link?'onclick="window.open(\''+b.link+'\',\'_blank\')"':'')+'>'+
+    var boc=clickReg('b'+b.id,b.link,b.img);
+    return '<div style="position:relative;border-radius:8px;overflow:hidden;cursor:'+(boc?'pointer':'default')+';background:#1a1a1a;" '+(boc?'onclick="'+boc+'"':'')+'>'+
       (b.img?'<img src="'+b.img+'" style="width:100%;display:block;'+(ep?'opacity:.5':'')+'" alt="">':'<div style="height:80px;background:#2a2a2a;"></div>')+
       (ep?'<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.45);"><span style="background:#E2001A;color:#fff;font-size:16px;font-weight:900;padding:8px 20px;border-radius:6px;letter-spacing:2px;transform:rotate(-5deg);">ÉPUISÉ</span></div>':'')+
       ((sh||ch)?'<div style="background:rgba(0,0,0,.65);padding:10px 14px;">'+sh+ch+'</div>':'')+
@@ -870,7 +1005,8 @@ async function renderExtraBanners(){
 
 function resetEbForm(){
   document.getElementById('ebEditId').value='';
-  ['ebUrl','ebCondition','ebLink'].forEach(function(id){document.getElementById(id).value='';});
+  document.getElementById('ebMode').value='link';
+  ['ebName','ebUrl','ebCondition','ebLink'].forEach(function(id){document.getElementById(id).value='';});
   document.getElementById('ebQty').value='';document.getElementById('ebStart').value='';document.getElementById('ebEnd').value='';
   document.getElementById('ebFile').value='';document.getElementById('ebPrev').style.display='none';document.getElementById('ebPrev').src='';
 }
@@ -882,13 +1018,24 @@ function openAddExtraBannerFromList(){
   resetEbForm();document.getElementById('ebFormTitle').textContent='➕ Ajouter une bannière';
   OV.sw('extraBannerListOv','extraBannerFormOv');
 }
+/* Noms internes des bannières : enregistrés dans settings (clé banner_names), jamais affichés sur le site */
+async function getBannerNames(){var v=await getSetting('banner_names');try{v=v?(typeof v==='string'?JSON.parse(v):v):{};}catch(e){v={};}return v&&typeof v==='object'?v:{};}
+async function setBannerName(id,name){
+  if(id==null||id==='')return;
+  var m=await getBannerNames();
+  if(name)m[id]=name;else delete m[id];
+  await setSetting('banner_names',JSON.stringify(m));
+}
+function escH(t){return String(t==null?'':t).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
 async function openManageExtraBanners(){
   OV.sw('globalOv','extraBannerListOv');
-  var bns=await getExtraBanners();
+  var bns=await getExtraBanners(),names=await getBannerNames();
   var l=document.getElementById('ebList');
   if(!bns.length){l.innerHTML='<div style="color:#bbb;font-size:12px;text-align:center;padding:10px;">Aucune bannière.</div>';return;}
   l.innerHTML=bns.map(function(b){
-    return '<div class="aitem"><div><div class="aiinfo">'+(b.condition_text||'Bannière sans texte')+'</div><div class="aisub">Qté: '+(b.qty||'-')+' — Fin: '+(b.end_date||'-')+'</div></div><div class="aiact"><button class="bedit" onclick="editExtraBanner('+b.id+')">Modifier</button><button class="bdel" onclick="deleteExtraBanner('+b.id+')">Supprimer</button></div></div>';
+    var nm=names[b.id]||b.condition_text||'Bannière sans nom';
+    var th=b.img?'<img src="'+escH(b.img)+'" style="width:64px;height:40px;object-fit:cover;border-radius:4px;flex-shrink:0;">':'';
+    return '<div class="aitem"><div style="display:flex;align-items:center;gap:10px;min-width:0;">'+th+'<div><div class="aiinfo">'+escH(nm)+'</div><div class="aisub">Qté: '+(b.qty||'-')+' — Début: '+(b.start_date?frDate(b.start_date):'-')+' — Fin: '+(b.end_date?frDate(b.end_date):'-')+'</div></div></div><div class="aiact"><button class="bedit" onclick="editExtraBanner('+b.id+')">Modifier</button><button class="bdel" onclick="deleteExtraBanner('+b.id+')">Supprimer</button></div></div>';
   }).join('');
 }
 async function editExtraBanner(id){
@@ -896,9 +1043,11 @@ async function editExtraBanner(id){
   var b=data[0];
   document.getElementById('ebFormTitle').textContent='✏️ Modifier la bannière';
   document.getElementById('ebEditId').value=id;
+  document.getElementById('ebName').value=(await getBannerNames())[id]||'';
   document.getElementById('ebUrl').value=b.img||'';
   document.getElementById('ebCondition').value=b.condition_text||'';
   document.getElementById('ebLink').value=b.link||'';
+  await loadClickModes();document.getElementById('ebMode').value=CLKM['b'+id]==='image'?'image':'link';
   document.getElementById('ebQty').value=b.qty||'';
   document.getElementById('ebStart').value=b.start_date||'';
   document.getElementById('ebEnd').value=b.end_date||'';
@@ -906,7 +1055,7 @@ async function editExtraBanner(id){
   OV.sw('extraBannerListOv','extraBannerFormOv');
 }
 async function deleteExtraBanner(id){
-  if(confirm('Supprimer cette bannière ?')){await sb('banners?id=eq.'+id,{method:'DELETE'});openManageExtraBanners();renderExtraBanners();}
+  if(confirm('Supprimer cette bannière ?')){await sb('banners?id=eq.'+id,{method:'DELETE'});await setBannerName(id,'');openManageExtraBanners();renderExtraBanners();}
 }
 async function saveExtraBanner(){
   var u=document.getElementById('ebUrl').value.trim(),prev=document.getElementById('ebPrev').src;
@@ -927,8 +1076,11 @@ async function saveExtraBanner(){
     ban.position=ex.length+1;
     ban.created_at=Date.now();
     await sb('banners',{method:'POST',headers:{'Prefer':'return=minimal'},body:JSON.stringify(ban)});
+    var nb=await sb('banners?created_at=eq.'+ban.created_at+'&select=id');if(nb.length)id=nb[0].id;
   }
-  await renderExtraBanners();OV.sw('extraBannerFormOv','extraBannerListOv');
+  await setBannerName(id,document.getElementById('ebName').value.trim());
+  if(id)await setClickMode('b'+id,document.getElementById('ebMode').value);
+  await renderExtraBanners();OV.sw('extraBannerFormOv','globalOv');openManageExtraBanners();
 }
 setupFileInput('ebFile','ebPrev');setupUrlInput('ebUrl','ebPrev');
 
