@@ -622,22 +622,16 @@ function updCnt(){var mx=maxV(),mn=Math.max(1,Math.floor(mx*.3));document.getEle
 setInterval(updCnt,120000);
 
 /* ===== OFFRES SAISIES AUJOURD'HUI =====
-   - rien avant 10h00
-   - progression aléatoire (propre à chaque jour) entre 10h00 et 19h00, puis le chiffre reste fixe
-   - total de la journée : entre 60 % et 100 % de 3 % du stock de départ des offres en ligne
-   - le chiffre ne baisse jamais dans la journée et reste identique si on recharge la page */
-var OFF_DEBUT=10*60,OFF_FIN=19*60,OFF_TAUX=.03;
+   = nombre total de pièces parties depuis minuit sur tous les produits et bannières du site
+     (stock affiché à minuit - stock affiché maintenant), donc toujours cohérent avec les stocks.
+   - rien avant 10h00 */
+var OFF_DEBUT=10*60;
 function offresNow(){
-  if(!STKTOT)return 0;
   var d=new Date(),t=d.getHours()*60+d.getMinutes();
   if(t<OFF_DEBUT)return 0;
-  var seed=d.getFullYear()*1000+(d.getMonth()+1)*40+d.getDate();
-  var total=Math.max(1,Math.round(STKTOT*OFF_TAUX*(.6+.4*srand(seed*3.7))));
-  var n=(OFF_FIN-OFF_DEBUT)/30,cw=[0];
-  for(var i=0;i<n;i++)cw.push(cw[i]+Math.pow(srand(seed*11+i*5.17),1.5)+.1); // créneaux de 30 min plus ou moins actifs
-  var el=Math.min(n,(t-OFF_DEBUT)/30),k=Math.floor(el);
-  var cum=k>=n?cw[n]:cw[k]+(cw[k+1]-cw[k])*(el-k);
-  return Math.floor(total*cum/cw[n]);
+  var n=0;
+  for(var k in STKMAP){if(STKDAY0.hasOwnProperty(k)){var x=STKDAY0[k]-STKMAP[k];if(x>0)n+=x;}}
+  return n;
 }
 async function updOff(){
   await ensureStock();
@@ -653,6 +647,20 @@ setInterval(updOff,120000);
 function srand(s){var x=Math.sin(s+1)*1e4;return x-Math.floor(x);}
 function hstr(s){s=String(s==null?'':s);var h=2166136261;for(var i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619);}return (h>>>0)%100000;}
 // key = identifiant unique du produit/bannière : chaque produit a sa propre courbe de décroissance aléatoire
+/* Heures d'ouverture : les stocks ne baissent que pendant ces créneaux
+   lundi-vendredi 9h30-20h00, samedi 9h30-18h30, dimanche fermé (minutes depuis minuit) */
+var OPEN_H={1:[570,1200],2:[570,1200],3:[570,1200],4:[570,1200],5:[570,1200],6:[570,1110]};
+function dayOpenMin(dow){var o=OPEN_H[dow];return o?o[1]-o[0]:0;}
+var BIZ_E=new Date(2024,0,1).getTime(),BIZ_W=0;for(var _d=0;_d<7;_d++)BIZ_W+=dayOpenMin(_d);
+// minutes d'ouverture écoulées depuis le lundi 1er janvier 2024 jusqu'à t
+function bizT(t){
+  var d=new Date(t),m=new Date(d.getFullYear(),d.getMonth(),d.getDate()).getTime();
+  var days=Math.round((m-BIZ_E)/864e5),w=Math.floor(days/7),r=days-w*7,tot=w*BIZ_W;
+  for(var i=0;i<r;i++)tot+=dayOpenMin((1+i)%7);
+  var o=OPEN_H[d.getDay()];
+  if(o){var mn=d.getHours()*60+d.getMinutes()+d.getSeconds()/60;tot+=Math.max(0,Math.min(mn,o[1])-o[0]);}
+  return tot;
+}
 function mkCurve(qty,end,created,startDate,key){
   if(!qty||!end)return null;
   // Utilise la date de début si définie, sinon created_at
@@ -673,6 +681,7 @@ function mkCurve(qty,end,created,startDate,key){
   var cw=[0];
   for(var i=0;i<days;i++)cw.push(cw[i]+Math.pow(srand(seed*13+i*7.31),2)+.05);
   c.cw=cw;c.days=days;
+  c.bs=bizT(start);c.be=bizT(e);
   // Profil global propre au produit : départ rapide ou plus régulier
   c.a=.5+srand(seed)*.7;
   return c;
@@ -681,7 +690,9 @@ function stockAt(c,now){
   if(!c)return null;
   if(now>=c.e)return 0;
   if(!c.s||now<=c.s||!c.cw)return c.q;
-  var el=(now-c.s)/864e5,d=Math.floor(el),frac=el-d;
+  // le temps « avance » seulement pendant les heures d'ouverture
+  var vn=c.be>c.bs?c.s+(c.e-c.s)*Math.min(1,Math.max(0,(bizT(now)-c.bs)/(c.be-c.bs))):now;
+  var el=(vn-c.s)/864e5,d=Math.floor(el),frac=el-d;
   var cum=d>=c.days?c.cw[c.days]:c.cw[d]+(c.cw[d+1]-c.cw[d])*frac;
   var r=Math.pow(Math.min(1,cum/c.cw[c.days]),c.a);
   var v=Math.max(0,Math.min(c.q,Math.round(c.q*(1-r))));
@@ -699,7 +710,7 @@ function rawStock(qty,end,created,startDate,key){return stockAt(mkCurve(qty,end,
    2) le stock affiché ne remonte jamais (il baisse ou reste identique)
    On rejoue l'historique heure par heure depuis la mise en ligne : à chaque heure, le stock
    ne peut que baisser, et en cas d'égalité avec un autre produit il est décalé vers le bas. */
-var STKMAP={},STKP=null,STKT=0,STKTOT=0;
+var STKMAP={},STKP=null,STKT=0,STKTOT=0,STKDAY0={};
 function buildStockMap(prods,banners,nowMs){
   var H=36e5,items=[];
   prods.forEach(function(p){var k=(p.id!=null?"p"+p.id:p.name),c=mkCurve(p.qty,p.end_date,p.created_at,p.start_date,k);if(c)items.push(c);});
@@ -744,7 +755,9 @@ function ensureStock(){
       if((!st||st<=nw)&&nw<en)tot+=(+x.qty||0);
     });
     STKTOT=tot;
-    STKMAP=buildStockMap(res[0],res[1],nw);return STKMAP;
+    STKMAP=buildStockMap(res[0],res[1],nw);
+    var d0=new Date(nw);d0.setHours(0,0,0,0);STKDAY0=buildStockMap(res[0],res[1],d0.getTime()); // stocks à minuit
+    return STKMAP;
   }).catch(function(){STKP=null;return STKMAP;});
   return STKP;
 }
