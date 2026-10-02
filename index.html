@@ -454,12 +454,16 @@ body{font-family:Arial,sans-serif;background:#f0f0f0;min-height:100vh}
 var SB='https://pbkeizxnelnokaeuaiia.supabase.co';
 var SK='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBia2VpenhuZWxub2thZXVhaWlhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgxNDAxODIsImV4cCI6MjA5MzcxNjE4Mn0.RQ-7TmaCLQWEUuZkU4HX50DHxbHjZTB2NHGQY0w_Gow';
 
+var SBERR='';
 async function sb(path,o){
   var opts=o||{};
   opts.headers=Object.assign({'apikey':SK,'Authorization':'Bearer '+SK,'Content-Type':'application/json'},opts.headers||{});
   if(opts.method&&opts.method!=='GET'&&/^(products|banners)/.test(path))STKP=null;
   var r=await fetch(SB+'/rest/v1/'+path,opts);
-  if(opts.method&&opts.method!=='GET') return r.ok;
+  if(opts.method&&opts.method!=='GET'){
+    if(!r.ok){try{SBERR=r.status+' '+(await r.text());}catch(e){SBERR=String(r.status);}console.error('Supabase',path,SBERR);}
+    return r.ok;
+  }
   var d=await r.json(); return Array.isArray(d)?d:[];
 }
 async function getSetting(k){var d=await sb('settings?key=eq.'+encodeURIComponent(k)+'&select=value');return d.length?d[0].value:null;}
@@ -999,10 +1003,12 @@ async function saveProd(){
   if(id){
     var ex=adminProds.find(function(p){return p.id==id;});
     if(ex)prod.created_at=ex.created_at;
-    await sb('products?id=eq.'+id,{method:'PATCH',body:JSON.stringify(prod)});
+    var okP=await sb('products?id=eq.'+id,{method:'PATCH',body:JSON.stringify(prod)});
+    if(!okP){alert(saveErrMsg(img));return;}
   } else {
     prod.created_at=Date.now();
-    await sb('products',{method:'POST',headers:{'Prefer':'return=minimal'},body:JSON.stringify(prod)});
+    var okN=await sb('products',{method:'POST',headers:{'Prefer':'return=minimal'},body:JSON.stringify(prod)});
+    if(!okN){alert(saveErrMsg(img));return;}
     var np=await sb('products?created_at=eq.'+prod.created_at+'&select=id');if(np.length)id=np[0].id;
   }
   if(id)await setClickMode('p'+id,document.getElementById('prodMode').value);
@@ -1023,11 +1029,11 @@ function compressImg(file,cb){
   r.onload=function(ev){
     var im=new Image();
     im.onload=function(){
-      var M=1400,w=im.naturalWidth,h=im.naturalHeight,k=Math.min(1,M/Math.max(w,h));
+      var M=1200,w=im.naturalWidth,h=im.naturalHeight,k=Math.min(1,M/Math.max(w,h));
       var c=document.createElement('canvas');c.width=Math.round(w*k);c.height=Math.round(h*k);
       var x=c.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,c.width,c.height);x.drawImage(im,0,0,c.width,c.height);
       var q=.85,out=c.toDataURL('image/jpeg',q);
-      while(out.length>700000&&q>.4){q-=.1;out=c.toDataURL('image/jpeg',q);}
+      while(out.length>300000&&q>.4){q-=.1;out=c.toDataURL('image/jpeg',q);}
       cb(out);
     };
     im.onerror=function(){alert("Ce fichier n'est pas une image lisible.");};
@@ -1035,7 +1041,12 @@ function compressImg(file,cb){
   };
   r.readAsDataURL(file);
 }
-var IMG_MAX=900000; // taille max acceptée pour une image enregistrée
+var IMG_MAX=900000;
+function saveErrMsg(img){
+  var m="L'enregistrement a échoué, rien n'a été modifié.\n\nDétail technique : "+(SBERR||'inconnu').slice(0,300);
+  if(img&&img.indexOf('data:')===0)m+="\n\nL'image choisie depuis l'ordinateur n'a pas été acceptée par la base de données. Utilisez plutôt une adresse internet d'image (ex : postimages.org → « Lien direct ») dans le champ Image URL.";
+  return m;
+} // taille max acceptée pour une image enregistrée
 function setupFileInput(fileId,prevId,urlId){
   document.getElementById(fileId).addEventListener('change',function(e){var f=e.target.files[0];if(!f)return;compressImg(f,function(d){if(urlId&&document.getElementById(urlId))document.getElementById(urlId).value='';document.getElementById(prevId).src=d;document.getElementById(prevId).style.display='block';});});
 }
@@ -1169,12 +1180,12 @@ async function saveExtraBanner(){
   var id=document.getElementById('ebEditId').value;
   var ban={img:img,condition_text:condition,link:lnk,qty:qty,start_date:sd,end_date:ed};
   if(id){
-    await sb('banners?id=eq.'+id,{method:'PATCH',body:JSON.stringify(ban)});
+    if(!(await sb('banners?id=eq.'+id,{method:'PATCH',body:JSON.stringify(ban)}))){alert(saveErrMsg(img));return;}
   } else {
     var ex=await getExtraBanners();
     ban.position=ex.length+1;
     ban.created_at=Date.now();
-    await sb('banners',{method:'POST',headers:{'Prefer':'return=minimal'},body:JSON.stringify(ban)});
+    if(!(await sb('banners',{method:'POST',headers:{'Prefer':'return=minimal'},body:JSON.stringify(ban)}))){alert(saveErrMsg(img));return;}
     var nb=await sb('banners?created_at=eq.'+ban.created_at+'&select=id');if(nb.length)id=nb[0].id;
   }
   await setBannerName(id,document.getElementById('ebName').value.trim());
