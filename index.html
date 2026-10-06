@@ -88,6 +88,9 @@ button,input,select,textarea{font-family:inherit}
 .iprev{width:60px;height:60px;object-fit:contain;border:.5px solid #eee;border-radius:4px;background:#f8f8f8;margin-top:6px;display:none}
 .hint{font-size:10px;color:#aaa;margin-top:3px}
 .slabel{font-size:10px;font-weight:700;color:#999;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px}
+.stores-wrap{display:grid;grid-template-columns:1fr 1fr;gap:18px;align-items:start;}
+.stores-col{display:flex;flex-direction:column;gap:10px;}
+@media(max-width:760px){.stores-wrap{grid-template-columns:1fr;}}
 </style>
 </head>
 <body>
@@ -446,9 +449,14 @@ button,input,select,textarea{font-family:inherit}
           <div style="font-size:13px;font-weight:700;color:#E2001A;margin-bottom:6px;text-transform:uppercase;">Notre vision commune</div>
           <div style="font-size:13px;color:#333;line-height:1.7;">Le groupe Performance est un regroupement de magasins Cuisinellà qui unissent une passion commune : celle de <strong>satisfaire les clients</strong> grâce à des produits, des services et des partenaires de qualité.</div>
         </div>
-        <div id="leafletMap" style="height:320px;border-radius:8px;overflow:hidden;border:.5px solid #eee;margin-bottom:18px;"></div>
         <div style="font-size:11px;font-weight:700;color:#E2001A;text-transform:uppercase;margin-bottom:10px;">Nos 10 magasins</div>
-        <div id="storesList" style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px;"></div>
+        <div class="stores-wrap">
+          <div id="storesList" class="stores-col"></div>
+          <div class="stores-col">
+            <div id="leafletMap" style="height:420px;border-radius:8px;overflow:hidden;border:.5px solid #eee;"></div>
+            <div id="storesListB" class="stores-col"></div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -1273,9 +1281,12 @@ var STORES=[
   {name:'Besançon',addr:'ZAC Chateaufarine, 25000 Besançon',lat:47.2169,lng:5.9511},
 ];
 function renderStores(){
-  document.getElementById('storesList').innerHTML=STORES.map(function(s,i){
+  var card=function(s,i){
     return'<div id="sc'+i+'" style="background:#f9f9f9;border:.5px solid #eee;border-radius:8px;padding:12px 14px;cursor:pointer;" onclick="hlStore('+i+')" onmouseover="this.style.borderColor=\'#E2001A\'" onmouseout="this.style.borderColor=\'#eee\'"><div style="font-size:12px;font-weight:900;color:#E2001A;margin-bottom:3px;"><span style="background:#E2001A;color:#fff;border-radius:50%;width:18px;height:18px;display:inline-flex;align-items:center;justify-content:center;font-size:9px;margin-right:6px;">'+(i+1)+'</span>Cuisinellà '+s.name+'</div><div style="font-size:11px;color:#555;padding-left:24px;">'+s.addr+'</div></div>';
-  }).join('');
+  };
+  /* 1 à 8 à gauche ; Chalezeule et Besançon sous la carte */
+  document.getElementById('storesList').innerHTML=STORES.slice(0,8).map(function(s,i){return card(s,i);}).join('');
+  document.getElementById('storesListB').innerHTML=STORES.slice(8).map(function(s,i){return card(s,i+8);}).join('');
   setTimeout(initMap,150);
 }
 function initMap(){
@@ -1289,6 +1300,7 @@ function initMap(){
     var m=L.marker([s.lat,s.lng],{icon:ic}).addTo(map).bindPopup('<b style="color:#E2001A;">Cuisinellà '+s.name+'</b><br><span style="font-size:11px;color:#555;">'+s.addr+'</span>');
     m.on('click',function(){hlStore(i);});window._mks.push(m);
   });
+  map.fitBounds(L.latLngBounds(STORES.map(function(s){return[s.lat,s.lng];})),{padding:[30,30]});
 }
 function hlStore(i){
   if(window._mks)window._mks[i].openPopup();
