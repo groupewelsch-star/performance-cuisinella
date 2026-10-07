@@ -91,6 +91,11 @@ button,input,select,textarea{font-family:inherit}
 .stores-wrap{display:grid;grid-template-columns:1fr 1fr;gap:18px;align-items:start;}
 .stores-col{display:flex;flex-direction:column;gap:10px;}
 @media(max-width:760px){.stores-wrap{grid-template-columns:1fr;}}
+.ordbtns{display:flex;flex-direction:column;align-items:center;gap:2px;flex-shrink:0}
+.ordbtns button{width:26px;height:20px;border:1px solid #ddd;background:#fff;border-radius:4px;color:#E2001A;font-size:10px;cursor:pointer;line-height:1;padding:0}
+.ordbtns button:hover:not([disabled]){border-color:#E2001A;background:#fff5f5}
+.ordbtns button[disabled]{color:#ccc;cursor:default}
+.ordbtns span{font-size:10px;font-weight:700;color:#999}
 </style>
 </head>
 <body>
@@ -1156,11 +1161,27 @@ async function openManageExtraBanners(){
   var bns=await getExtraBanners(),names=await getBannerNames();
   var l=document.getElementById('ebList');
   if(!bns.length){l.innerHTML='<div style="color:#bbb;font-size:12px;text-align:center;padding:10px;">Aucune bannière.</div>';return;}
-  l.innerHTML=bns.map(function(b){
+  l.innerHTML=bns.map(function(b,i){
     var nm=names[b.id]||b.condition_text||'Bannière sans nom';
+    var mv='<div class="ordbtns"><button title="Monter" '+(i===0?'disabled':'onclick="moveExtraBanner('+b.id+',-1)"')+'>▲</button><span>'+(i+1)+'</span><button title="Descendre" '+(i===bns.length-1?'disabled':'onclick="moveExtraBanner('+b.id+',1)"')+'>▼</button></div>';
     var th=b.img?'<img src="'+escH(b.img)+'" style="width:64px;height:40px;object-fit:cover;border-radius:4px;flex-shrink:0;">':'';
-    return '<div class="aitem"><div style="display:flex;align-items:center;gap:10px;min-width:0;">'+th+'<div><div class="aiinfo">'+escH(nm)+'</div><div class="aisub">Qté: '+(b.qty||'-')+' — Début: '+(b.start_date?frDate(b.start_date):'-')+' — Fin: '+(b.end_date?frDate(b.end_date):'-')+'</div></div></div><div class="aiact"><button class="bedit" onclick="editExtraBanner('+b.id+')">Modifier</button><button class="bdel" onclick="deleteExtraBanner('+b.id+')">Supprimer</button></div></div>';
+    return '<div class="aitem"><div style="display:flex;align-items:center;gap:10px;min-width:0;">'+mv+th+'<div><div class="aiinfo">'+escH(nm)+'</div><div class="aisub">Qté: '+(b.qty||'-')+' — Début: '+(b.start_date?frDate(b.start_date):'-')+' — Fin: '+(b.end_date?frDate(b.end_date):'-')+'</div></div></div><div class="aiact"><button class="bedit" onclick="editExtraBanner('+b.id+')">Modifier</button><button class="bdel" onclick="deleteExtraBanner('+b.id+')">Supprimer</button></div></div>';
   }).join('');
+}
+/* Ordre d'affichage : renumérote 1..n après déplacement (▲/▼) */
+var EB_MOVING=false;
+async function moveExtraBanner(id,dir){
+  if(EB_MOVING)return;EB_MOVING=true;
+  try{
+    var bns=await getExtraBanners();
+    var i=bns.findIndex(function(b){return b.id===id;}),j=i+dir;
+    if(i<0||j<0||j>=bns.length)return;
+    var t=bns[i];bns[i]=bns[j];bns[j]=t;
+    for(var k=0;k<bns.length;k++){
+      if(bns[k].position!==k+1)await sb('banners?id=eq.'+bns[k].id,{method:'PATCH',body:JSON.stringify({position:k+1})});
+    }
+    await openManageExtraBanners();renderExtraBanners();
+  }finally{EB_MOVING=false;}
 }
 async function editExtraBanner(id){
   var data=await sb('banners?id=eq.'+id);if(!data.length)return;
